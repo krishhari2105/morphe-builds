@@ -199,6 +199,8 @@ def get_target_versions(cli_path, patches_path, package_name, manual_version):
                  v_match = re.match(r'^(v?\d+(\.\d+)+)', line)
                  if v_match:
                      versions.append(v_match.group(1))
+                 elif "Any" in line:
+                     versions.append("Any")
 
         if versions:
             # Sort desc
@@ -267,7 +269,12 @@ def find_apk_in_release(app_name, version):
     release = get_latest_github_release(f"{APK_REPO_OWNER}/{APK_REPO_NAME}")
     if not release: raise Exception("Could not fetch APK repo releases.")
     
-    target_base = f"{app_name}-v{version}"
+    # MODIFIED: Handle the case where the required version is "Any"
+    if version == "Any":
+        target_base = f"{app_name}-v"
+    else:
+        target_base = f"{app_name}-v{version}"
+        
     for asset in release.get('assets', []):
         name = asset['name']
         # Match 'appname-v19.16.39.apk' or 'appname-v19.16.39.apkm'
