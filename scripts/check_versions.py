@@ -37,7 +37,8 @@ APPS_TO_CHECK = [
     "com.google.android.apps.youtube.music",
     "com.reddit.frontpage",
     "com.twitter.android",
-    "com.spotify.music"
+    "com.spotify.music",
+    "com.google.android.apps.photos"
 ]
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
