@@ -43,7 +43,8 @@ PKG_MAP = {
     "yt-music": "com.google.android.apps.youtube.music",
     "reddit": "com.reddit.frontpage",
     "twitter": "com.twitter.android",
-    "spotify": "com.spotify.music"
+    "spotify": "com.spotify.music",
+    "gphotos": "com.google.android.apps.photos"
 }
 
 def log(msg):
