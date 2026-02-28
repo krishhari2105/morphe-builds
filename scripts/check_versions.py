@@ -63,6 +63,9 @@ APPS_TO_CHECK = [
 ]
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+github_token = os.environ.get("GITHUB_TOKEN")
+if github_token:
+    HEADERS["Authorization"] = f"token {github_token}"
 
 def download_asset(repo, extension, output_dir, allow_prerelease=False):
     if allow_prerelease:
@@ -78,7 +81,8 @@ def download_asset(repo, extension, output_dir, allow_prerelease=False):
             resp = resp[0]
             
         if 'assets' not in resp:
-            print(f"Error: No assets found for {repo}")
+            api_msg = resp.get('message', 'No specific error message provided')
+            print(f"Error: No assets found for {repo} | API Response: {api_msg}")
             return None
             
         for asset in resp['assets']:
