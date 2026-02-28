@@ -307,6 +307,49 @@ def is_arm64_only(apk_path):
         log(f"Error inspecting APK architecture: {e}")
         return False
 
+def get_aapt_path():
+    """Finds the aapt tool within the GitHub Actions Android SDK."""
+    android_home = os.environ.get("ANDROID_HOME")
+    if not android_home:
+        return None
+        
+    build_tools_dir = os.path.join(android_home, "build-tools")
+    if not os.path.exists(build_tools_dir):
+        return None
+        
+    # Get all build-tool versions and sort them to get the latest
+    versions = [d for d in os.listdir(build_tools_dir) if os.path.isdir(os.path.join(build_tools_dir, d))]
+    if not versions:
+        return None
+        
+    # Sort version strings properly (e.g., 34.0.0 > 33.0.2)
+    versions.sort(key=lambda s: [int(x) if x.isdigit() else x for x in re.split(r'(\d+)', s)])
+    latest_version = versions[-1]
+    
+    aapt_path = os.path.join(build_tools_dir, latest_version, "aapt")
+    if os.path.exists(aapt_path):
+        return aapt_path
+        
+    return None
+
+def get_apk_version(apk_path):
+    """Uses aapt to extract the real versionName from the APK."""
+    aapt_path = get_aapt_path()
+    if not aapt_path:
+        log("Could not find aapt. Will fallback to selected patch version.")
+        return "Unknown"
+    
+    try:
+        output = subprocess.check_output([aapt_path, "dump", "badging", apk_path], text=True, stderr=subprocess.STDOUT)
+        # Search for versionName='X.Y.Z'
+        match = re.search(r"versionName='([^']+)'", output)
+        if match:
+            return match.group(1)
+    except Exception as e:
+        log(f"Error reading APK version with aapt: {e}")
+        
+    return "Unknown"
+
 def patch_app(app_key, patch_source, input_version_string, cli_path, patches_path):
     pkg = PKG_MAP.get(app_key)
     if not pkg: 
@@ -355,11 +398,19 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
         os.makedirs(dist_dir, exist_ok=True)
         
         # Check the actual internal contents of the APK we are about to patch
+        real_version = get_apk_version(final_apk_path)
+        if real_version == "Unknown":
+            # Fallback to the version from the CLI (e.g., 'Any' or '19.16.39') if aapt fails
+            real_version = selected_version
+            
+        log(f"Extracted real app version for naming: {real_version}")
+        
+        # Check the actual internal contents of the APK we are about to patch
         if is_arm64_only(final_apk_path):
-            out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{selected_version}-arm64.apk"
+            out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{real_version}-arm64.apk"
             log(f"Architecture check: arm64-only detected for {app_key}")
         else:
-            out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{selected_version}.apk"
+            out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{real_version}.apk"
             log(f"Architecture check: Universal/multi-arch detected for {app_key}")
         
         cmd = [
