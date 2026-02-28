@@ -306,7 +306,7 @@ def find_apk_in_release(app_name, version):
     Returns (download_url, filename) if found, else (None, None).
     """
     log(f"Searching release assets for {app_name} v{version}...")
-    release = get_latest_github_release(f"{APK_REPO_OWNER}/{APK_REPO_NAME}")
+    release = get_github_release(f"{APK_REPO_OWNER}/{APK_REPO_NAME}")
     if not release: raise Exception("Could not fetch APK repo releases.")
     
     # MODIFIED: Handle the case where the required version is "Any"
