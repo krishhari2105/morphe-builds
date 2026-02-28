@@ -117,7 +117,12 @@ def check_versions():
 
         try:
             # Run list-versions
-            cmd = ["java", "-jar", cli_path, "list-versions", patches_path]
+            # v6 CLI (revanced-dev) requires -p for patches and -b to bypass verification
+            if source_name == "revanced-dev":
+                cmd = ["java", "-jar", cli_path, "list-versions", "-p", patches_path, "-b"]
+            else:
+                cmd = ["java", "-jar", cli_path, "list-versions", patches_path]
+                
             process = subprocess.run(cmd, capture_output=True, text=True)
             
             output = process.stdout
