@@ -284,6 +284,29 @@ def find_apk_in_release(app_name, version):
             return asset['url'], name
     return None, None
 
+def is_arm64_only(apk_path):
+    """
+    Checks if the APK contains ONLY arm64-v8a native libraries.
+    If it has no libraries (Java-only) or multiple architectures, returns False.
+    """
+    try:
+        with zipfile.ZipFile(apk_path, 'r') as z:
+            # Find all files inside the 'lib/' directory
+            lib_files = [f for f in z.namelist() if f.startswith('lib/') and not f.endswith('/')]
+            
+            if not lib_files:
+                # No native libraries at all, meaning it's universal/architecture-independent
+                return False
+                
+            # Check if ANY library belongs to an architecture other than arm64-v8a
+            other_libs = [f for f in lib_files if not f.startswith('lib/arm64-v8a/')]
+            
+            # If there are libraries, and NONE of them are outside the arm64 folder, it's arm64-only
+            return len(other_libs) == 0
+    except Exception as e:
+        log(f"Error inspecting APK architecture: {e}")
+        return False
+
 def patch_app(app_key, patch_source, input_version_string, cli_path, patches_path):
     pkg = PKG_MAP.get(app_key)
     if not pkg: 
@@ -330,7 +353,14 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
 
         dist_dir = "dist"
         os.makedirs(dist_dir, exist_ok=True)
-        out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{selected_version}-arm64.apk"
+        
+        # Check the actual internal contents of the APK we are about to patch
+        if is_arm64_only(final_apk_path):
+            out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{selected_version}-arm64.apk"
+            log(f"Architecture check: arm64-only detected for {app_key}")
+        else:
+            out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{selected_version}.apk"
+            log(f"Architecture check: Universal/multi-arch detected for {app_key}")
         
         cmd = [
             "java", "-jar", cli_path,
