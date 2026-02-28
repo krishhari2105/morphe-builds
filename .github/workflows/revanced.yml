@@ -10,9 +10,11 @@ on:
         type: choice
         options:
           - revanced
+          - revanced-dev
           - inotia00
           - anddea
           - morphe
+          - morphe-dev
       apps_list:
         description: "Apps to patch (comma-separated or 'all')"
         required: true
