@@ -205,7 +205,7 @@ def parse_version_override(override_string, current_app):
     
     return override_string
 
-def get_target_versions(cli_path, patches_path, package_name, manual_version):
+def get_target_versions(cli_path, patches_path, package_name, manual_version, patch_source):
     """
     Returns a LIST of compatible versions, sorted descending.
     If manual_version is set, returns a list with just that version.
