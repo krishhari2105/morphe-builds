@@ -16,25 +16,46 @@ SOURCES = {
         "patches_repo": "ReVanced/revanced-patches",
         "cli_repo": "ReVanced/revanced-cli",
         "patches_asset": ".rvp",
-        "cli_asset": ".jar"
+        "cli_asset": ".jar",
+        "use_prerelease": False
     },
+
+    "revanced-dev": {
+        "patches_repo": "ReVanced/revanced-patches",
+        "cli_repo": "ReVanced/revanced-cli",
+        "patches_asset": ".rvp",
+        "cli_asset": ".jar",
+        "use_prerelease": True
+    },
+        
     "inotia00": {
         "patches_repo": "inotia00/revanced-patches",
         "cli_repo": "inotia00/revanced-cli",
         "patches_asset": ".rvp",
         "cli_asset": ".jar"
+        "use_prerelease": False
     },
     "anddea": {
         "patches_repo": "anddea/revanced-patches",
         "cli_repo": "inotia00/revanced-cli", 
         "patches_asset": ".rvp",
         "cli_asset": ".jar"
+        "use_prerelease": False
     },
     "morphe": {
         "patches_repo": "MorpheApp/morphe-patches",
         "cli_repo": "MorpheApp/morphe-cli",
         "patches_asset": ".mpp",
         "cli_asset": ".jar"
+        "use_prerelease": False
+    },
+
+    "morphe-dev": {
+        "patches_repo": "MorpheApp/morphe-patches",
+        "cli_repo": "MorpheApp/morphe-cli",
+        "patches_asset": ".mpp",
+        "cli_asset": ".jar",
+        "use_prerelease": True
     }
 }
 
@@ -103,22 +124,38 @@ def download_file(url, filename):
 
 
 
-def get_latest_github_release(repo):
-    url = f"https://api.github.com/repos/{repo}/releases/latest"
-    try:
-        resp = requests.get(url, headers=get_auth_headers())
-        resp.raise_for_status()  # Check for HTTP errors (404, 500, etc.)
-        return resp.json()       # <--- RETURN THE JSON DICTIONARY
-    except Exception as e:
-        log(f"Failed to fetch release for {repo}: {e}")
-        return None
+def get_github_release(repo, allow_prerelease=False):
+    if allow_prerelease:
+        # Fetch all releases to get the newest one, even if it's a pre-release
+        url = f"https://api.github.com/repos/{repo}/releases"
+        try:
+            resp = requests.get(url, headers=get_auth_headers())
+            resp.raise_for_status()
+            releases = resp.json()
+            if releases:
+                return releases[0] # The first item is always the most recent
+            return None
+        except Exception as e:
+            log(f"Failed to fetch pre-releases for {repo}: {e}")
+            return None
+    else:
+        # Standard latest release fetch
+        url = f"https://api.github.com/repos/{repo}/releases/latest"
+        try:
+            resp = requests.get(url, headers=get_auth_headers())
+            resp.raise_for_status() 
+            return resp.json()       
+        except Exception as e:
+            log(f"Failed to fetch latest release for {repo}: {e}")
+            return None
 
 def fetch_tools(source_key):
     config = SOURCES.get(source_key)
     os.makedirs("tools", exist_ok=True)
     
     def get_asset(repo, ext):
-        release = get_latest_github_release(repo)
+        # Pass the pre-release preference to the fetching function
+        release = get_github_release(repo, config.get('use_prerelease', False))
         if not release: return None, None
         
         for asset in release.get('assets', []):
