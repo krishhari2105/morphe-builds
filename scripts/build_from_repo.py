@@ -215,7 +215,10 @@ def get_target_versions(cli_path, patches_path, package_name, manual_version):
         return [manual_version]
         
     log(f"Auto-detecting versions for {package_name}...")
-    cmd = ["java", "-jar", cli_path, "list-versions", patches_path]
+    if patch_source == "revanced-dev":
+        cmd = ["java", "-jar", cli_path, "list-versions", "-p", patches_path, "-b"]
+    else:
+        cmd = ["java", "-jar", cli_path, "list-versions", patches_path]
     try:
         output = subprocess.check_output(cmd, text=True)
         versions = []
@@ -397,7 +400,7 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
         app_version_setting = parse_version_override(input_version_string, app_key)
         
         # Get LIST of candidate versions
-        candidate_versions = get_target_versions(cli_path, patches_path, pkg, app_version_setting)
+        candidate_versions = get_target_versions(cli_path, patches_path, pkg, app_version_setting, patch_source)
         
         dl_url = None
         apk_filename = None
@@ -450,13 +453,23 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
             out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{real_version}.apk"
             log(f"Architecture check: Universal/multi-arch detected for {app_key}")
         
-        cmd = [
-            "java", "-jar", cli_path,
-            "patch",
-            "-p", patches_path,
-            "-o", out_apk,
-            final_apk_path
-        ]
+        if patch_source == "revanced-dev":
+            cmd = [
+                "java", "-jar", cli_path,
+                "patch",
+                "-p", patches_path,
+                "-b",  # Bypass signature verification for the patch file in v6
+                "-o", out_apk,
+                final_apk_path
+            ]
+        else:
+            cmd = [
+                "java", "-jar", cli_path,
+                "patch",
+                "-p", patches_path,
+                "-o", out_apk,
+                final_apk_path
+            ]
         
         log(f"Patching {app_key}...")
         subprocess.run(cmd, check=True)
