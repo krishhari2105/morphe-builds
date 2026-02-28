@@ -10,25 +10,46 @@ SOURCES = {
         "patches_repo": "ReVanced/revanced-patches",
         "cli_repo": "ReVanced/revanced-cli",
         "patches_asset": ".rvp",
-        "cli_asset": ".jar"
+        "cli_asset": ".jar",
+        "use_prerelease": False
     },
+
+    "revanced-dev": {
+        "patches_repo": "ReVanced/revanced-patches",
+        "cli_repo": "ReVanced/revanced-cli",
+        "patches_asset": ".rvp",
+        "cli_asset": ".jar",
+        "use_prerelease": True
+    },
+        
     "inotia00": {
         "patches_repo": "inotia00/revanced-patches",
         "cli_repo": "inotia00/revanced-cli",
         "patches_asset": ".rvp",
         "cli_asset": ".jar"
+        "use_prerelease": False
     },
     "anddea": {
         "patches_repo": "anddea/revanced-patches",
         "cli_repo": "inotia00/revanced-cli", 
         "patches_asset": ".rvp",
         "cli_asset": ".jar"
+        "use_prerelease": False
     },
     "morphe": {
         "patches_repo": "MorpheApp/morphe-patches",
         "cli_repo": "MorpheApp/morphe-cli",
         "patches_asset": ".mpp",
         "cli_asset": ".jar"
+        "use_prerelease": False
+    },
+
+    "morphe-dev": {
+        "patches_repo": "MorpheApp/morphe-patches",
+        "cli_repo": "MorpheApp/morphe-cli",
+        "patches_asset": ".mpp",
+        "cli_asset": ".jar",
+        "use_prerelease": True
     }
 }
 
@@ -43,10 +64,19 @@ APPS_TO_CHECK = [
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-def download_asset(repo, extension, output_dir):
-    url = f"https://api.github.com/repos/{repo}/releases/latest"
+def download_asset(repo, extension, output_dir, allow_prerelease=False):
+    if allow_prerelease:
+        url = f"https://api.github.com/repos/{repo}/releases"
+    else:
+        url = f"https://api.github.com/repos/{repo}/releases/latest"
+        
     try:
         resp = requests.get(url, headers=HEADERS).json()
+        
+        # If we asked for all releases, pick the first one
+        if allow_prerelease and isinstance(resp, list) and len(resp) > 0:
+            resp = resp[0]
+            
         if 'assets' not in resp:
             print(f"Error: No assets found for {repo}")
             return None
@@ -78,8 +108,8 @@ def check_versions():
     print("-" * 120)
 
     for source_name, config in SOURCES.items():
-        cli_path = download_asset(config["cli_repo"], config["cli_asset"], "tools_check")
-        patches_path = download_asset(config["patches_repo"], config["patches_asset"], "tools_check")
+        cli_path = download_asset(config["cli_repo"], config["cli_asset"], "tools_check", config.get("use_prerelease", False))
+        patches_path = download_asset(config["patches_repo"], config["patches_asset"], "tools_check", config.get("use_prerelease", False))
 
         if not cli_path or not patches_path:
             print(f"{source_name:<18} | ERROR: Could not download tools")
