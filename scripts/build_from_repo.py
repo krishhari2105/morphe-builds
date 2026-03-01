@@ -4,6 +4,7 @@ import re
 import subprocess
 import sys
 import zipfile
+import json
 import shutil
 from datetime import datetime
 
@@ -81,6 +82,16 @@ PKG_MAP = {
     "spotify": "com.spotify.music",
     "gphotos": "com.google.android.apps.photos"
 }
+
+# --- Load Patch Configuration ---
+PATCH_CONFIG = {}
+if os.path.exists("patches.json"):
+    try:
+        with open("patches.json", "r") as f:
+            PATCH_CONFIG = json.load(f)
+        log("Loaded patches.json successfully.")
+    except Exception as e:
+        log(f"Warning: Could not parse patches.json: {e}")
 
 def log(msg):
     print(f"[+] {msg}", flush=True)
@@ -467,25 +478,32 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
             out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{real_version}.apk"
             log(f"Architecture check: Universal/multi-arch detected for {app_key}")
         
+        # --- APP-SPECIFIC PATCH LOGIC ---
+        app_config = PATCH_CONFIG.get(app_key, {})
+        enables = set(app_config.get("enable", []))
+        disables = set(app_config.get("disable", []))
+
+        # Build the base CLI command
+        cmd = [
+            "java", "-jar", cli_path,
+            "patch",
+            "-p", patches_path,
+            "-o", out_apk
+        ]
+
         if patch_source == "revanced-dev":
-            cmd = [
-                "java", "-jar", cli_path,
-                "patch",
-                "-p", patches_path,
-                "-b",  # Bypass signature verification for the patch file in v6
-                "-o", out_apk,
-                final_apk_path
-            ]
-        else:
-            cmd = [
-                "java", "-jar", cli_path,
-                "patch",
-                "-p", patches_path,
-                "-o", out_apk,
-                final_apk_path
-            ]
+            cmd.insert(4, "-b") # Bypass signature verification
+
+        # Apply the explicitly enabled (-e) and disabled (-d) patches
+        for patch in enables:
+            cmd.extend(["-e", patch])
+        for patch in disables:
+            cmd.extend(["-d", patch])
+
+        # The input APK must ALWAYS be the final argument
+        cmd.append(final_apk_path)
         
-        log(f"Patching {app_key}...")
+        log(f"Patching {app_key} with {len(enables)} explicit enables and {len(disables)} explicit disables...")
         subprocess.run(cmd, check=True)
         log(f"Successfully created {out_apk}")
         return True
