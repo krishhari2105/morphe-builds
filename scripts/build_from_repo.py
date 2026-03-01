@@ -56,6 +56,20 @@ SOURCES = {
         "patches_asset": ".mpp",
         "cli_asset": ".jar",
         "use_prerelease": True
+    },
+    "piko": {
+        "patches_repo": "crimera/piko",
+        "cli_repo": "MorpheApp/morphe-cli",
+        "patches_asset": ".mpp",
+        "cli_asset": ".jar",
+        "use_prerelease": False
+    },
+    "piko-dev": {
+        "patches_repo": "crimera/piko",
+        "cli_repo": "MorpheApp/morphe-cli",
+        "patches_asset": ".mpp",
+        "cli_asset": ".jar",
+        "use_prerelease": True
     }
 }
 
