@@ -83,6 +83,13 @@ PKG_MAP = {
     "gphotos": "com.google.android.apps.photos"
 }
 
+def log(msg):
+    print(f"[+] {msg}", flush=True)
+
+def error(msg):
+    print(f"[!] {msg}", flush=True)
+    raise Exception(msg)
+
 # --- Load Patch Configuration ---
 PATCH_CONFIG = {}
 if os.path.exists("patches.json"):
@@ -92,13 +99,6 @@ if os.path.exists("patches.json"):
         log("Loaded patches.json successfully.")
     except Exception as e:
         log(f"Warning: Could not parse patches.json: {e}")
-
-def log(msg):
-    print(f"[+] {msg}", flush=True)
-
-def error(msg):
-    print(f"[!] {msg}", flush=True)
-    raise Exception(msg)
 
 def get_auth_headers():
     token = os.environ.get("PRIVATE_REPO_TOKEN")
