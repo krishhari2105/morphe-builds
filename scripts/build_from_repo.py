@@ -208,7 +208,7 @@ def fetch_apkeditor():
     os.makedirs("tools", exist_ok=True)
     apkeditor_path = "tools/APKEditor.jar"
     if not os.path.exists(apkeditor_path):
-        url = "https://github.com/REAndroid/APKEditor/releases/download/V1.4.7/APKEditor-1.4.7.jar"
+        url = "https://github.com/REAndroid/APKEditor/releases/download/V1.4.8/APKEditor-1.4.8.jar"
         if not download_file(url, apkeditor_path):
              raise Exception("Failed to download APKEditor.jar")
     return apkeditor_path
