@@ -71,7 +71,14 @@ SOURCES = {
         "patches_asset": ".mpp",
         "cli_asset": ".jar",
         "use_prerelease": True
-    }
+    },
+    "de-revanced": {
+        "patches_repo": "RookieEnough/De-ReVanced",
+        "cli_repo": "MorpheApp/morphe-cli",
+        "patches_asset": ".mpp",
+        "cli_asset": ".jar",
+        "use_prerelease": False
+    }    
 }
 
 PKG_MAP = {
