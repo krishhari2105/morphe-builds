@@ -38,7 +38,7 @@ SOURCES = {
     },
     "anddea": {
         "patches_repo": "anddea/revanced-patches",
-        "cli_repo": "inotia00/revanced-cli", 
+        "cli_repo": "MorpheApp/morphe-cli", 
         "patches_asset": ".rvp",
         "cli_asset": ".jar",
         "use_prerelease": False
