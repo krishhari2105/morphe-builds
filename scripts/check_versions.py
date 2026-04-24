@@ -88,7 +88,7 @@ APPS_TO_CHECK = [
     "com.reddit.frontpage",
     "com.twitter.android",
     "com.spotify.music",
-    "com.google.android.apps.photos"
+    "com.google.android.apps.photos,"
     "ch.protonvpn.android"
 ]
 
