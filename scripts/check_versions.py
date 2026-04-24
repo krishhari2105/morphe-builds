@@ -71,6 +71,14 @@ SOURCES = {
         "patches_asset": ".mpp",
         "cli_asset": ".jar",
         "use_prerelease": False
+    },
+
+    "hoo-dles": {
+        "patches_repo": "hoo-dles/morphe-patches",
+        "cli_repo": "MorpheApp/morphe-cli",
+        "patches_asset": ".mpp",
+        "cli_asset": ".jar",
+        "use_prerelease": False
     }
 }
 
@@ -81,6 +89,7 @@ APPS_TO_CHECK = [
     "com.twitter.android",
     "com.spotify.music",
     "com.google.android.apps.photos"
+    "ch.protonvpn.android"
 ]
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
