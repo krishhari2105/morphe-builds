@@ -78,7 +78,15 @@ SOURCES = {
         "patches_asset": ".mpp",
         "cli_asset": ".jar",
         "use_prerelease": False
-    }    
+    },
+
+    "hoo-dles": {
+        "patches_repo": "hoo-dles/morphe-patches",
+        "cli_repo": "MorpheApp/morphe-cli",
+        "patches_asset": ".mpp",
+        "cli_asset": ".jar",
+        "use_prerelease": False
+    }
 }
 
 PKG_MAP = {
@@ -87,7 +95,8 @@ PKG_MAP = {
     "reddit": "com.reddit.frontpage",
     "twitter": "com.twitter.android",
     "spotify": "com.spotify.music",
-    "gphotos": "com.google.android.apps.photos"
+    "gphotos": "com.google.android.apps.photos",
+    "proton-vpn": "ch.protonvpn.android"
 }
 
 def log(msg):
