@@ -17,6 +17,7 @@ on:
           - morphe-dev
           - piko
           - piko-dev
+          - hoo-dles
       apps_list:
         description: "Apps to patch (comma-separated or 'all')"
         required: true
