@@ -9,9 +9,6 @@ on:
         default: "revanced"
         type: choice
         options:
-          - revanced
-          - revanced-dev
-          - inotia00
           - anddea
           - morphe
           - morphe-dev
