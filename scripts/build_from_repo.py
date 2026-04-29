@@ -498,7 +498,7 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
             f"--keystore={keystore_path}",
             "--keystore-password=",         # Empty password
             "--keystore-entry-alias=Morphe", # Alias found in keytool
-            "--keystore-entry-password="    # Empty key password
+            "--keystore-entry-password=Morphe"    # Empty key password
         ])
 
         cmd.append(final_apk_path) # Input APK is always last
