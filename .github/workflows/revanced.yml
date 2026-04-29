@@ -52,47 +52,7 @@ jobs:
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
         run: python scripts/build_from_repo.py
 
-      - name: Sign & Align APKs
-        id: sign_apks
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_FILE }} # Base64 encoded .jks file
-          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
-          KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
-          KEY_PASS: ${{ secrets.KEY_PASS }}
-        run: |
-          echo "Decoding keystore..."
-          echo $KEYSTORE_BASE64 | base64 -d > release.jks
-
-          # Find build tools
-          BUILD_TOOLS=$ANDROID_HOME/build-tools/34.0.0
-          # If 34.0.0 not found, try finding any version
-          if [ ! -d "$BUILD_TOOLS" ]; then
-            BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
-          fi
-          echo "Using build-tools: $BUILD_TOOLS"
-          
-          mkdir -p signed_dist
-          
-          for apk in dist/*.apk; do
-            if [ -f "$apk" ]; then
-              base_name=$(basename "$apk")
-              echo "Processing $base_name..."
-              
-              # Align
-              "$BUILD_TOOLS/zipalign" -v -p 4 "$apk" "dist/aligned_$base_name"
-              
-              # Sign
-              "$BUILD_TOOLS/apksigner" sign \
-                --ks release.jks \
-                --ks-key-alias "$KEY_ALIAS" \
-                --ks-pass pass:"$KEYSTORE_PASS" \
-                --key-pass pass:"$KEY_PASS" \
-                --out "signed_dist/$base_name" \
-                "dist/aligned_$base_name"
-                
-              echo "Signed: $base_name"
-            fi
-          done
+    
 
       - name: Create Unified Release
         uses: softprops/action-gh-release@v2
@@ -100,7 +60,7 @@ jobs:
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_NAME }}
-          files: signed_dist/*.apk
+          files: dist/*.apk
           body: |
             **Source:** ${{ inputs.patch_source }}
             **Apps:** ${{ inputs.apps_list }}
