@@ -13,29 +13,6 @@ APK_REPO_OWNER = "krishhari2105"
 APK_REPO_NAME = "base-apks"
 
 SOURCES = {
-    "revanced": {
-        "patches_repo": "ReVanced/revanced-patches",
-        "cli_repo": "ReVanced/revanced-cli",
-        "patches_asset": ".rvp",
-        "cli_asset": ".jar",
-        "use_prerelease": False
-    },
-
-    "revanced-dev": {
-        "patches_repo": "ReVanced/revanced-patches",
-        "cli_repo": "ReVanced/revanced-cli",
-        "patches_asset": ".rvp",
-        "cli_asset": ".jar",
-        "use_prerelease": True
-    },
-        
-    "inotia00": {
-        "patches_repo": "inotia00/revanced-patches",
-        "cli_repo": "inotia00/revanced-cli",
-        "patches_asset": ".rvp",
-        "cli_asset": ".jar",
-        "use_prerelease": False
-    },
     "anddea": {
         "patches_repo": "anddea/revanced-patches",
         "cli_repo": "MorpheApp/morphe-cli", 
@@ -254,12 +231,16 @@ def get_target_versions(cli_path, patches_path, package_name, manual_version, pa
     if manual_version and manual_version != "auto":
         log(f"Manual version override: {manual_version}")
         return [manual_version]
+
+    config = SOURCES.get(patch_source, {})
+    is_dev = config.get("use_prerelease", False)
         
     log(f"Auto-detecting versions for {package_name}...")
-    if patch_source == "revanced-dev":
-        cmd = ["java", "-jar", cli_path, "list-versions", "-p", patches_path, "-b"]
+    cmd = ["java", "-jar", cli_path, "list-versions"]
+    if is_dev:
+        cmd.append(f"--patches={patches_path}")
     else:
-        cmd = ["java", "-jar", cli_path, "list-versions", patches_path]
+        cmd.append(patches_path)
     try:
         output = subprocess.check_output(cmd, text=True)
         versions = []
@@ -493,35 +474,28 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
         else:
             out_apk = f"{dist_dir}/{app_key}-{patch_source}-v{real_version}.apk"
             log(f"Architecture check: Universal/multi-arch detected for {app_key}")
+
+        config = SOURCES.get(patch_source, {})
+        is_dev = config.get("use_prerelease", False)
+
+        # Universal Morphe syntax for patching
+        cmd = ["java", "-jar", cli_path, "patch", "-o", out_apk]
         
-        # --- APP-SPECIFIC PATCH LOGIC ---
+        # Add enables/disables
         app_config = PATCH_CONFIG.get(app_key, {})
-        enables = set(app_config.get("enable", []))
-        disables = set(app_config.get("disable", []))
+        for patch in app_config.get("enable", []): cmd.extend(["-e", patch])
+        for patch in app_config.get("disable", []): cmd.extend(["-d", patch])
 
-        # Build the base CLI command
-        cmd = [
-            "java", "-jar", cli_path,
-            "patch",
-            "-p", patches_path,
-            "-o", out_apk
-        ]
+        # Positional or flag-based patches path
+        if is_dev:
+            cmd.append(f"--patches={patches_path}")
+        else:
+            cmd.append(patches_path)
 
-        if patch_source == "revanced-dev":
-            cmd.insert(4, "-b") # Bypass signature verification
-
-        # Apply the explicitly enabled (-e) and disabled (-d) patches
-        for patch in enables:
-            cmd.extend(["-e", patch])
-        for patch in disables:
-            cmd.extend(["-d", patch])
-
-        # The input APK must ALWAYS be the final argument
-        cmd.append(final_apk_path)
+        cmd.append(final_apk_path) # Input APK is always last
         
-        log(f"Patching {app_key} with {len(enables)} explicit enables and {len(disables)} explicit disables...")
+        log(f"Patching {app_key}...")
         subprocess.run(cmd, check=True)
-        log(f"Successfully created {out_apk}")
         return True
 
     except Exception as e:
