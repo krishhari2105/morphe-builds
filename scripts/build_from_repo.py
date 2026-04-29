@@ -490,7 +490,7 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
         if is_dev:
             cmd.append(f"--patches={patches_path}")
         else:
-            cmd.append(patches_path)
+            cmd.append(f"--patches={patches_path}")
 
         cmd.append(final_apk_path) # Input APK is always last
         
