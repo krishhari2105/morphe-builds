@@ -6,29 +6,6 @@ import sys
 
 # --- Configuration ---
 SOURCES = {
-    "revanced": {
-        "patches_repo": "ReVanced/revanced-patches",
-        "cli_repo": "ReVanced/revanced-cli",
-        "patches_asset": ".rvp",
-        "cli_asset": ".jar",
-        "use_prerelease": False
-    },
-
-    "revanced-dev": {
-        "patches_repo": "ReVanced/revanced-patches",
-        "cli_repo": "ReVanced/revanced-cli",
-        "patches_asset": ".rvp",
-        "cli_asset": ".jar",
-        "use_prerelease": True
-    },
-        
-    "inotia00": {
-        "patches_repo": "inotia00/revanced-patches",
-        "cli_repo": "inotia00/revanced-cli",
-        "patches_asset": ".rvp",
-        "cli_asset": ".jar",
-        "use_prerelease": False
-    },
     "anddea": {
         "patches_repo": "anddea/revanced-patches",
         "cli_repo": "MorpheApp/morphe-cli", 
@@ -150,12 +127,14 @@ def check_versions():
             continue
 
         try:
-            # Run list-versions
-            # v6 CLI (revanced-dev) requires -p for patches and -b to bypass verification
-            if source_name == "revanced-dev":
-                cmd = ["java", "-jar", cli_path, "list-versions", "-p", patches_path, "-b"]
+            is_dev = config.get("use_prerelease", False)
+            
+            # Universal syntax logic
+            cmd = ["java", "-jar", cli_path, "list-versions"]
+            if is_dev:
+                cmd.append(f"--patches={patches_path}")
             else:
-                cmd = ["java", "-jar", cli_path, "list-versions", patches_path]
+                cmd.append(patches_path)
                 
             process = subprocess.run(cmd, capture_output=True, text=True)
             
