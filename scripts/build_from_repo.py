@@ -492,6 +492,15 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
         else:
             cmd.append(f"--patches={patches_path}")
 
+        keystore_path = "morphe.keystore"
+
+        cmd.extend([
+            f"--keystore={keystore_path}",
+            "--keystore-password=",         # Empty password
+            "--keystore-entry-alias=Morphe", # Alias found in keytool
+            "--keystore-entry-password="    # Empty key password
+        ])
+
         cmd.append(final_apk_path) # Input APK is always last
         
         log(f"Patching {app_key}...")
