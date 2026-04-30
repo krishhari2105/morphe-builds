@@ -6,7 +6,7 @@ on:
       patch_source:
         description: "Select Patch Source"
         required: true
-        default: "revanced"
+        default: "morphe"
         type: choice
         options:
           - anddea
@@ -14,6 +14,7 @@ on:
           - morphe-dev
           - piko
           - piko-dev
+          - de-revanced
           - hoo-dles
       apps_list:
         description: "Apps to patch (comma-separated or 'all')"
