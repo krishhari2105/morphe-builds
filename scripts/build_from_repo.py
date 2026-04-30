@@ -547,7 +547,7 @@ def main():
     tag_name = f"v{date_str}-{patch_source}"
     with open(os.environ['GITHUB_ENV'], 'a') as f:
         f.write(f"RELEASE_TAG={tag_name}\n")
-        f.write(f"RELEASE_NAME=ReVanced {patch_source.capitalize()} - {date_str}\n")
+        f.write(f"RELEASE_NAME={patch_source.capitalize()} - {date_str}\n")
     
     if success_count == 0:
         sys.exit(1)
