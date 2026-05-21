@@ -476,7 +476,6 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
             log(f"Architecture check: Universal/multi-arch detected for {app_key}")
 
         config = SOURCES.get(patch_source, {})
-        is_dev = config.get("use_prerelease", False)
 
         # Universal Morphe syntax for patching
         cmd = ["java", "-jar", cli_path, "patch", "-o", out_apk]
