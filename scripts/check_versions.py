@@ -126,16 +126,9 @@ def check_versions():
             print(f"{source_name:<18} | ERROR: Could not download tools")
             continue
 
-        try:
-            is_dev = config.get("use_prerelease", False)
-            
+        try:         
             # Universal syntax logic
-            cmd = ["java", "-jar", cli_path, "list-versions"]
-            if is_dev:
-                cmd.append(f"--patches={patches_path}")
-            else:
-                cmd.append(patches_path)
-                
+            cmd = ["java", "-jar", cli_path, "list-versions", f"--patches={patches_path}"]         
             process = subprocess.run(cmd, capture_output=True, text=True)
             
             output = process.stdout
