@@ -486,11 +486,7 @@ def patch_app(app_key, patch_source, input_version_string, cli_path, patches_pat
         for patch in app_config.get("enable", []): cmd.extend(["-e", patch])
         for patch in app_config.get("disable", []): cmd.extend(["-d", patch])
 
-        # Positional or flag-based patches path
-        if is_dev:
-            cmd.append(f"--patches={patches_path}")
-        else:
-            cmd.append(f"--patches={patches_path}")
+        cmd.append(f"--patches={patches_path}")
 
         keystore_path = "morphe.keystore"
 
