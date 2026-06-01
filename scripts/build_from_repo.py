@@ -237,10 +237,9 @@ def get_target_versions(cli_path, patches_path, package_name, manual_version, pa
         
     log(f"Auto-detecting versions for {package_name}...")
     cmd = ["java", "-jar", cli_path, "list-versions"]
-    if is_dev:
-        cmd.append(f"--patches={patches_path}")
-    else:
-        cmd.append(patches_path)
+    
+    cmd.append(f"--patches={patches_path}")
+    
     try:
         output = subprocess.check_output(cmd, text=True)
         versions = []
