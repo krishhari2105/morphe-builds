@@ -1,14 +1,10 @@
 {
   "twitter": {
-    "enable": [
-      "Dynamic color"
-    ],
+    "enable": [],
     "disable": []
   },
   "youtube": {
     "enable": [],
-    "disable": [
-      "Enable debugging"
-    ]
+    "disable": []
   }
 }
