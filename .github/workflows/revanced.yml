@@ -9,7 +9,6 @@ on:
         default: "morphe"
         type: choice
         options:
-          - anddea
           - morphe
           - morphe-dev
           - piko
