@@ -13,13 +13,6 @@ APK_REPO_OWNER = "krishhari2105"
 APK_REPO_NAME = "base-apks"
 
 SOURCES = {
-    "anddea": {
-        "patches_repo": "anddea/revanced-patches",
-        "cli_repo": "MorpheApp/morphe-cli", 
-        "patches_asset": ".mpp",
-        "cli_asset": ".jar",
-        "use_prerelease": False
-    },
     "morphe": {
         "patches_repo": "MorpheApp/morphe-patches",
         "cli_repo": "MorpheApp/morphe-cli",
