@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "morphe": {
+      "name": "Morphe stable",
+      "patches_repo": "MorpheApp/morphe-patches",
+      "cli_repo": "MorpheApp/morphe-desktop",
+      "patches_asset_regex": "^patches-[^/]+\\.mpp$",
+      "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
+      "channel": "stable",
+      "scheduled": true,
+      "apps": ["youtube", "yt-music", "reddit"]
+    },
+    "morphe-dev": {
+      "name": "Morphe development",
+      "patches_repo": "MorpheApp/morphe-patches",
+      "cli_repo": "MorpheApp/morphe-desktop",
+      "patches_asset_regex": "^patches-[^/]+\\.mpp$",
+      "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
+      "channel": "prerelease",
+      "scheduled": true,
+      "apps": ["youtube", "yt-music", "reddit"]
+    },
+    "piko": {
+      "name": "Piko stable",
+      "patches_repo": "crimera/piko",
+      "cli_repo": "MorpheApp/morphe-desktop",
+      "patches_asset_regex": "^patches-[^/]+\\.mpp$",
+      "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
+      "channel": "stable",
+      "scheduled": false,
+      "apps": ["twitter"]
+    },
+    "piko-dev": {
+      "name": "Piko development",
+      "patches_repo": "crimera/piko",
+      "cli_repo": "MorpheApp/morphe-desktop",
+      "patches_asset_regex": "^patches-[^/]+\\.mpp$",
+      "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
+      "channel": "prerelease",
+      "scheduled": false,
+      "apps": ["twitter"]
+    },
+    "de-revanced": {
+      "name": "De-ReVanced",
+      "patches_repo": "RookieEnough/De-Vanced",
+      "cli_repo": "MorpheApp/morphe-desktop",
+      "patches_asset_regex": "^patches-[^/]+\\.mpp$",
+      "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
+      "channel": "stable",
+      "scheduled": false,
+      "apps": ["gphotos"]
+    },
+    "hoo-dles": {
+      "name": "hoo-dles",
+      "patches_repo": "hoo-dles/morphe-patches",
+      "cli_repo": "MorpheApp/morphe-desktop",
+      "patches_asset_regex": "^patches-[^/]+\\.mpp$",
+      "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
+      "channel": "stable",
+      "scheduled": false,
+      "apps": ["proton-vpn"]
+    }
+  }
+}

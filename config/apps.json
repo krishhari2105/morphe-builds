@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "apps": {
+    "youtube": {
+      "name": "YouTube",
+      "package": "com.google.android.youtube",
+      "apkmirror_url": "https://www.apkmirror.com/apk/google-inc/youtube/",
+      "formats": ["apk", "apkm", "apks", "xapk"],
+      "prefer": ["arm64-v8a", "universal"],
+      "target_abi": "arm64-v8a",
+      "patched_packages": ["app.morphe.android.youtube"]
+    },
+    "yt-music": {
+      "name": "YouTube Music",
+      "package": "com.google.android.apps.youtube.music",
+      "apkmirror_url": "https://www.apkmirror.com/apk/google-inc/youtube-music/",
+      "formats": ["apk", "apkm", "apks", "xapk"],
+      "prefer": ["arm64-v8a", "universal"],
+      "target_abi": "arm64-v8a",
+      "patched_packages": ["app.morphe.android.apps.youtube.music"]
+    },
+    "reddit": {
+      "name": "Reddit",
+      "package": "com.reddit.frontpage",
+      "apkmirror_url": "https://www.apkmirror.com/apk/redditinc/reddit/",
+      "formats": ["apk", "apkm", "apks", "xapk"],
+      "prefer": ["arm64-v8a", "universal"],
+      "target_abi": "arm64-v8a"
+    },
+    "twitter": {
+      "name": "X (Twitter)",
+      "package": "com.twitter.android",
+      "apkmirror_url": "https://www.apkmirror.com/apk/x-corp/twitter/",
+      "formats": ["apk", "apkm", "apks", "xapk"],
+      "prefer": ["arm64-v8a", "universal"],
+      "target_abi": "arm64-v8a"
+    },
+    "spotify": {
+      "name": "Spotify",
+      "package": "com.spotify.music",
+      "apkmirror_url": "https://www.apkmirror.com/apk/spotify-ab/spotify-music-podcasts/",
+      "formats": ["apk", "apkm", "apks", "xapk"],
+      "prefer": ["arm64-v8a", "universal"],
+      "target_abi": "arm64-v8a"
+    },
+    "gphotos": {
+      "name": "Google Photos",
+      "package": "com.google.android.apps.photos",
+      "apkmirror_url": "https://www.apkmirror.com/apk/google-inc/photos/",
+      "formats": ["apk", "apkm", "apks", "xapk"],
+      "prefer": ["arm64-v8a", "universal"],
+      "target_abi": "arm64-v8a"
+    },
+    "proton-vpn": {
+      "name": "Proton VPN",
+      "package": "ch.protonvpn.android",
+      "apkmirror_url": "https://www.apkmirror.com/apk/proton-technologies-ag/protonvpn-secure-and-free-vpn/",
+      "formats": ["apk", "apkm", "apks", "xapk"],
+      "prefer": ["arm64-v8a", "universal"],
+      "target_abi": "arm64-v8a"
+    }
+  }
+}

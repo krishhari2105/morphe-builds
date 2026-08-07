@@ -1,0 +1,198 @@
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlsplit
+
+from .http import HttpClient
+from .models import AppConfig
+
+
+class ApkMirrorError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class Link:
+    href: str
+    text: str
+    element_id: str | None = None
+    title: str | None = None
+
+
+class _LinkParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.links: list[Link] = []
+        self._current: dict[str, str | None] | None = None
+        self._text: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "a":
+            return
+        values = dict(attrs)
+        href = values.get("href")
+        if href:
+            self._current = {"href": href, "id": values.get("id"), "title": values.get("title")}
+            self._text = []
+
+    def handle_data(self, data: str) -> None:
+        if self._current is not None:
+            self._text.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "a" and self._current is not None:
+            self.links.append(
+                Link(
+                    href=str(self._current["href"]),
+                    text=" ".join("".join(self._text).split()),
+                    element_id=self._current["id"],
+                    title=self._current["title"],
+                )
+            )
+            self._current = None
+            self._text = []
+
+
+def _challenge(html: str) -> bool:
+    lower = html.lower()
+    markers = ("cf-chl-", "captcha", "just a moment", "attention required", "cloudflare ray id")
+    return any(marker in lower for marker in markers)
+
+
+def _slug_version(version: str) -> list[str]:
+    value = version.lower().lstrip("v")
+    return [value, value.replace(".", "-"), re.sub(r"[^a-z0-9]+", "-", value).strip("-")]
+
+
+class ApkMirrorResolver:
+    def __init__(self, http: HttpClient | None = None) -> None:
+        self.http = http or HttpClient(user_agent=(
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        ))
+        self.http.session.headers.update(
+            {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.8",
+            }
+        )
+
+    def _html(self, url: str, referer: str | None = None) -> tuple[str, str]:
+        headers = {"Referer": referer} if referer else None
+        response = self.http.session.get(url, headers=headers, timeout=self.http.timeout)
+        if response.status_code in {403, 429}:
+            raise ApkMirrorError(f"APKMirror blocked the request with HTTP {response.status_code}")
+        response.raise_for_status()
+        html = response.text
+        if _challenge(html):
+            raise ApkMirrorError("APKMirror returned a Cloudflare/CAPTCHA challenge")
+        return html, response.url
+
+    @staticmethod
+    def _links(html: str, base_url: str) -> list[Link]:
+        parser = _LinkParser()
+        parser.feed(html)
+        result: list[Link] = []
+        for link in parser.links:
+            absolute = urljoin(base_url, link.href)
+            host = (urlsplit(absolute).hostname or "").lower()
+            if host.endswith("apkmirror.com"):
+                result.append(Link(absolute, link.text, link.element_id, link.title))
+        return result
+
+    def resolve_latest(self, app: AppConfig) -> tuple[str, str, str]:
+        listing_html, listing_url = self._html(app.apkmirror_url)
+        release_links = [
+            link
+            for link in self._links(listing_html, listing_url)
+            if "/apk/" in link.href and "release" in link.href.lower()
+        ]
+        for link in release_links:
+            haystack = " ".join(filter(None, [link.text, link.title, link.href]))
+            if " beta" in haystack.lower():
+                continue
+            match = re.search(r"(?<!\d)(\d+(?:\.\d+)+(?:[-._A-Za-z0-9]+)?)", haystack)
+            if not match:
+                continue
+            version = match.group(1).rstrip("-._")
+            direct, source_page = self._resolve_from_release(app, version, link, listing_url)
+            return direct, source_page, version
+        raise ApkMirrorError(f"Could not determine the latest APKMirror version for {app.name}")
+
+    def resolve(self, app: AppConfig, version: str) -> tuple[str, str]:
+        listing_html, listing_url = self._html(app.apkmirror_url)
+        version_tokens = _slug_version(version)
+        release_links = [
+            link
+            for link in self._links(listing_html, listing_url)
+            if "/apk/" in link.href
+            and any(token in (link.href + " " + link.text).lower() for token in version_tokens)
+            and "release" in link.href.lower()
+        ]
+        if not release_links:
+            raise ApkMirrorError(f"No APKMirror release page found for {app.name} {version}")
+        release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
+        return self._resolve_from_release(app, version, release_link, listing_url)
+
+    def _resolve_from_release(
+        self,
+        app: AppConfig,
+        version: str,
+        release_link: Link,
+        listing_url: str,
+    ) -> tuple[str, str]:
+        release_html, release_url = self._html(release_link.href, listing_url)
+        candidates = [
+            link
+            for link in self._links(release_html, release_url)
+            if "android-apk-download" in link.href.lower()
+        ]
+        if not candidates:
+            raise ApkMirrorError(f"No downloadable variants found for {app.name} {version}")
+        variant = max(candidates, key=lambda link: self._variant_score(link, app))
+
+        download_html, download_page_url = self._html(variant.href, release_url)
+        download_links = self._links(download_html, download_page_url)
+        direct = next((link for link in download_links if link.element_id == "download-link"), None)
+        if direct is None:
+            direct = next(
+                (
+                    link
+                    for link in download_links
+                    if "download.php" in link.href.lower() or "key=" in link.href.lower()
+                ),
+                None,
+            )
+        if direct is None:
+            raise ApkMirrorError("APKMirror download page did not contain a final download link")
+        return direct.href, variant.href
+
+    @staticmethod
+    def _release_score(link: Link, tokens: list[str]) -> int:
+        haystack = (link.href + " " + link.text).lower()
+        score = 0
+        if tokens[0] in haystack:
+            score += 20
+        if tokens[1] in haystack:
+            score += 10
+        if "beta" not in haystack:
+            score += 2
+        return score
+
+    @staticmethod
+    def _variant_score(link: Link, app: AppConfig) -> int:
+        haystack = " ".join(filter(None, [link.href, link.text, link.title])).lower().replace("_", "-")
+        score = 0
+        if "arm64-v8a" in haystack or "arm64" in haystack:
+            score += 100
+        if "universal" in haystack:
+            score += 60
+        if "bundle" in haystack or "apkm" in haystack:
+            score += 15
+        if "nodpi" in haystack:
+            score += 5
+        if any(abi in haystack for abi in ("x86", "armeabi-v7a", "armeabi")) and "arm64" not in haystack:
+            score -= 200
+        return score
