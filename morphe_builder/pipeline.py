@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sys
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -136,6 +137,7 @@ class Builder:
                     )
                 )
             except Exception as exc:
+                print(f"ERROR [{app_key}]: {exc}", file=sys.stderr, flush=True)
                 results.append(AppBuildResult(app=app_key, status="failed", error=str(exc)))
 
         state = {
