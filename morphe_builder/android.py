@@ -155,10 +155,27 @@ class AndroidTools:
             signing_env = os.environ.copy()
             signing_env["MORPHE_APKSIGNER_STORE_PASS"] = keystore_password
             signing_env["MORPHE_APKSIGNER_KEY_PASS"] = key_password
-            sign = subprocess.run(
-                [
-                    str(self.apksigner),
+            if keystore_type.upper() == "BKS":
+                bcprov_path = Path(os.environ.get("BCPROV_JAR", "/usr/share/java/bcprov.jar"))
+                apksigner_jar = self.apksigner.parent / "lib" / "apksigner.jar"
+                java_path = shutil.which("java")
+                if not java_path or not bcprov_path.is_file() or not apksigner_jar.is_file():
+                    raise AndroidToolError(
+                        "BKS signing requires Java, apksigner.jar, and BCPROV_JAR (libbcprov-java)"
+                    )
+                sign_command = [
+                    java_path,
+                    "-cp",
+                    os.pathsep.join((str(apksigner_jar), str(bcprov_path))),
+                    "com.android.apksigner.ApkSignerTool",
                     "sign",
+                    "--provider-class",
+                    "org.bouncycastle.jce.provider.BouncyCastleProvider",
+                ]
+            else:
+                sign_command = [str(self.apksigner), "sign"]
+            sign_command.extend(
+                [
                     "--ks",
                     str(keystore_path),
                     "--ks-key-alias",
@@ -174,7 +191,10 @@ class AndroidTools:
                     "--out",
                     str(output_path),
                     str(aligned_path),
-                ],
+                ]
+            )
+            sign = subprocess.run(
+                sign_command,
                 check=False,
                 capture_output=True,
                 text=True,

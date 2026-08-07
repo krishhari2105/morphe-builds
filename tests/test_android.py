@@ -17,7 +17,11 @@ class AndroidTests(unittest.TestCase):
             output = root / "signed.apk"
             tools = AndroidTools.__new__(AndroidTools)
             tools.zipalign = Path("zipalign")
-            tools.apksigner = Path("apksigner")
+            tools.apksigner = root / "build-tools" / "apksigner"
+            (tools.apksigner.parent / "lib").mkdir(parents=True)
+            (tools.apksigner.parent / "lib" / "apksigner.jar").write_bytes(b"jar")
+            bcprov = root / "bcprov.jar"
+            bcprov.write_bytes(b"provider")
             calls = []
 
             def fake_run(command, **kwargs):
@@ -28,7 +32,9 @@ class AndroidTests(unittest.TestCase):
                     Path(command[command.index("--out") + 1]).write_bytes(b"signed")
                 return SimpleNamespace(returncode=0, stdout="", stderr="")
 
-            with patch("morphe_builder.android.subprocess.run", side_effect=fake_run):
+            with patch.dict("os.environ", {"BCPROV_JAR": str(bcprov)}, clear=False), patch(
+                "morphe_builder.android.shutil.which", return_value="/usr/bin/java"
+            ), patch("morphe_builder.android.subprocess.run", side_effect=fake_run):
                 tools.align_and_sign(
                     unsigned,
                     output,
