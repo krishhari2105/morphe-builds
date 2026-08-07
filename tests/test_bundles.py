@@ -53,6 +53,25 @@ class BundleTests(unittest.TestCase):
             self.assertEqual(set(info.native_abis), {"arm64-v8a", "x86"})
             self.assertEqual(bundle.read_bytes(), before)
 
+    def test_split_apks_may_omit_version_name_when_version_code_matches(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            bundle = self.make_bundle(root, ["base.apk", "split_config.arm64_v8a.apk"])
+            android = FakeAndroid(
+                {
+                    "base.apk": apk(),
+                    "arm64": apk(version="", split="config.arm64_v8a", native=("arm64-v8a",)),
+                }
+            )
+            info = inspect_bundle(
+                bundle,
+                android,
+                expected_package="com.google.android.youtube",
+                expected_version="20.12.46",
+            )
+            self.assertEqual(info.base.version_name, "20.12.46")
+            self.assertFalse(info.needs_arm64_strip)
+
     def test_arm64_only_bundle_does_not_request_strip(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

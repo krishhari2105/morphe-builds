@@ -87,15 +87,22 @@ def inspect_bundle(
         apks = tuple(android.inspect_apk(path) for path in apk_paths)
 
     packages = {apk.package for apk in apks}
-    versions = {(apk.version_code, apk.version_name) for apk in apks}
     bases = [apk for apk in apks if not apk.split]
     if packages != {expected_package}:
         raise BundleError(f"Bundle package mismatch: expected {expected_package}, found {sorted(packages)}")
-    if len(versions) != 1:
-        raise BundleError(f"Bundle contains multiple versions: {sorted(versions)}")
     if len(bases) != 1:
         raise BundleError(f"Bundle must contain exactly one base APK, found {len(bases)}")
     base = bases[0]
+    version_codes = {apk.version_code for apk in apks}
+    if version_codes != {base.version_code}:
+        raise BundleError(f"Bundle contains multiple version codes: {sorted(version_codes)}")
+    conflicting_names = {
+        apk.version_name for apk in apks if apk.version_name and apk.version_name != base.version_name
+    }
+    if conflicting_names:
+        raise BundleError(
+            f"Bundle contains version names that conflict with base {base.version_name}: {sorted(conflicting_names)}"
+        )
     if expected_version and base.version_name.lstrip("v") != expected_version.lstrip("v"):
         raise BundleError(
             f"Bundle version mismatch: expected {expected_version}, found {base.version_name}"

@@ -144,7 +144,7 @@ jobs:
 
   sign-and-publish:
     needs: [prepare, unsigned]
-    if: always() && needs.prepare.result == 'success'
+    if: needs.prepare.result == 'success' && needs.unsigned.result == 'success'
     permissions:
       contents: write
     strategy:
