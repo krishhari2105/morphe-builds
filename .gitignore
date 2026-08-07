@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.cache/
+.work/
+artifacts/
+staging/
+dist/
+downloads/
+tools/
+tools_check/
+extracted_*/
+temp_analysis_extract/
+*.part
+signing-keystore.bks
+.env
