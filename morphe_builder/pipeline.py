@@ -251,6 +251,7 @@ class Builder:
                     require_arm64=True,
                 )
                 self.android.check_alignment(output_path)
+                page_aligned_16k = self.android.check_16k_page_alignment(output_path)
                 fingerprint = self.android.verify_signature(
                     output_path, os.environ.get("SIGNING_CERT_SHA256")
                 )
@@ -261,6 +262,7 @@ class Builder:
                     "output_package": info.package,
                     "native_abis": list(info.native_code),
                     "signing_certificate_sha256": fingerprint,
+                    "page_aligned_16k": page_aligned_16k,
                 }
                 finalized_results.append(result)
         finally:

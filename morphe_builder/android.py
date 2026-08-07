@@ -209,10 +209,19 @@ class AndroidTools:
 
     def check_alignment(self, path: Path) -> None:
         result = subprocess.run(
-            [str(self.zipalign), "-c", "-P", "16", "4", str(path)],
+            [str(self.zipalign), "-c", "-v", "4", str(path)],
             check=False,
             capture_output=True,
             text=True,
         )
         if result.returncode != 0:
             raise AndroidToolError(f"zipalign verification failed: {result.stdout}\n{result.stderr}")
+
+    def check_16k_page_alignment(self, path: Path) -> bool:
+        result = subprocess.run(
+            [str(self.zipalign), "-c", "-P", "16", "-v", "4", str(path)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
