@@ -174,7 +174,58 @@ class ApkMirrorResolver:
             )
         if direct is None:
             raise ApkMirrorError("APKMirror download page did not contain a final download link")
-        return direct.href, variant.href
+        return self._follow_download_pages(direct.href, download_page_url), variant.href
+
+    def _follow_download_pages(self, url: str, referer: str) -> str:
+        current_url = url
+        current_referer = referer
+        seen: set[str] = set()
+        for _ in range(5):
+            if current_url in seen:
+                raise ApkMirrorError("APKMirror download flow entered a redirect/page loop")
+            seen.add(current_url)
+            response = self.http.session.get(
+                current_url,
+                headers={"Referer": current_referer},
+                stream=True,
+                allow_redirects=True,
+                timeout=self.http.timeout,
+            )
+            if response.status_code in {403, 429}:
+                response.close()
+                raise ApkMirrorError(f"APKMirror blocked the download flow with HTTP {response.status_code}")
+            response.raise_for_status()
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "html" not in content_type:
+                final_url = response.url
+                response.close()
+                return final_url
+            html = response.text
+            page_url = response.url
+            response.close()
+            if _challenge(html):
+                raise ApkMirrorError("APKMirror returned a Cloudflare/CAPTCHA challenge")
+            links = self._links(html, page_url)
+            next_link = next((link for link in links if link.element_id == "download-link"), None)
+            if next_link is None:
+                next_link = next(
+                    (
+                        link
+                        for link in links
+                        if (
+                            "download.php" in link.href.lower()
+                            or "key=" in link.href.lower()
+                            or link.text.strip().lower() in {"here", "click here", "download"}
+                        )
+                        and link.href not in seen
+                    ),
+                    None,
+                )
+            if next_link is None:
+                raise ApkMirrorError("APKMirror intermediate page contained no next download link")
+            current_referer = page_url
+            current_url = next_link.href
+        raise ApkMirrorError("APKMirror download flow exceeded the page limit")
 
     @staticmethod
     def _release_score(link: Link, tokens: list[str]) -> int:
