@@ -132,9 +132,16 @@ class ApkMirrorResolver:
             and "release" in link.href.lower()
         ]
         if not release_links:
-            raise ApkMirrorError(f"No APKMirror release page found for {app.name} {version}")
-        release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
+            release_link = Link(self._constructed_release_url(app, version), f"{app.name} {version}")
+        else:
+            release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
         return self._resolve_from_release(app, version, release_link, listing_url)
+
+    @staticmethod
+    def _constructed_release_url(app: AppConfig, version: str) -> str:
+        app_slug = urlsplit(app.apkmirror_url).path.rstrip("/").split("/")[-1]
+        version_slug = re.sub(r"[^a-z0-9]+", "-", version.lower().lstrip("v")).strip("-")
+        return urljoin(app.apkmirror_url, f"{app_slug}-{version_slug}-release/")
 
     def _resolve_from_release(
         self,

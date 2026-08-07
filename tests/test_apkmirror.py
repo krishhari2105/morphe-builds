@@ -11,6 +11,13 @@ class ApkMirrorTests(unittest.TestCase):
         self.assertEqual(links[0].element_id, "download-link")
         self.assertTrue(links[0].href.startswith("https://www.apkmirror.com/"))
 
+    def test_constructs_release_url_for_versions_not_on_first_listing_page(self):
+        app = load_config().apps["youtube"]
+        self.assertEqual(
+            ApkMirrorResolver._constructed_release_url(app, "21.04.223"),
+            "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/",
+        )
+
     def test_prefers_arm64_variant(self):
         app = load_config().apps["youtube"]
         arm64 = Link("https://www.apkmirror.com/a-arm64-android-apk-download/", "arm64-v8a")
