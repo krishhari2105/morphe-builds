@@ -48,6 +48,7 @@ class AndroidTests(unittest.TestCase):
             self.assertNotIn("store-secret", sign_command)
             self.assertNotIn("key-secret", sign_command)
             self.assertEqual(sign_command[sign_command.index("--ks-type") + 1], "BKS")
+            self.assertEqual(sign_command[sign_command.index("--v1-signing-enabled") + 1], "false")
             self.assertEqual(sign_kwargs["env"]["MORPHE_APKSIGNER_STORE_PASS"], "store-secret")
             self.assertEqual(sign_kwargs["env"]["MORPHE_APKSIGNER_KEY_PASS"], "key-secret")
             self.assertTrue(output.is_file())

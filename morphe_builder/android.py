@@ -186,6 +186,8 @@ class AndroidTools:
                     "env:MORPHE_APKSIGNER_STORE_PASS",
                     "--key-pass",
                     "env:MORPHE_APKSIGNER_KEY_PASS",
+                    "--v1-signing-enabled",
+                    "false",
                     "--v4-signing-enabled",
                     "false",
                     "--out",
