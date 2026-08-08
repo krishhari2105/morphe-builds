@@ -11,7 +11,7 @@ from typing import Any
 from .acquisition import (
     AcquisitionError,
     BaseCache,
-    download_apkmirror,
+    download_apkmirror_candidates,
     download_manual,
     rename_detected,
 )
@@ -368,34 +368,39 @@ class Builder:
             for method, _ in attempts:
                 temp_path = app_work_dir / "base-download.bin"
                 temp_path.unlink(missing_ok=True)
-                source_page: str | None = None
-                resolved_version = candidate
                 try:
-                    _, source_page, resolved_version = download_apkmirror(
-                        self.http, self.apkmirror, app, candidate, temp_path
+                    downloads = download_apkmirror_candidates(
+                        self.http, self.apkmirror, app, candidate, app_work_dir / "variants"
                     )
-                    detected_path = rename_detected(temp_path)
-                    info, native_abis, strip = inspect_source(
-                        detected_path,
-                        self.android,
-                        expected_package=app.package,
-                        expected_version=resolved_version,
-                        target_abi=app.target_abi,
-                    )
-                    cached = self.cache.store(
-                        app,
-                        detected_path,
-                        version_name=info.version_name,
-                        version_code=info.version_code,
-                        source_page=source_page,
-                    )
-                    return cached.path, info, native_abis, strip, {
-                        "acquisition": method,
-                        "source_page": source_page,
-                    }
+                    variant_errors: list[str] = []
+                    for result, source_page, resolved_version in downloads:
+                        try:
+                            detected_path = rename_detected(result.path)
+                            info, native_abis, strip = inspect_source(
+                                detected_path,
+                                self.android,
+                                expected_package=app.package,
+                                expected_version=resolved_version,
+                                target_abi=app.target_abi,
+                            )
+                            cached = self.cache.store(
+                                app,
+                                detected_path,
+                                version_name=info.version_name,
+                                version_code=info.version_code,
+                                source_page=source_page,
+                            )
+                            return cached.path, info, native_abis, strip, {
+                                "acquisition": method,
+                                "source_page": source_page,
+                            }
+                        except Exception as exc:
+                            variant_errors.append(str(exc))
+                            result.path.unlink(missing_ok=True)
+                    errors.append(f"{method} {candidate or 'latest'}: { '; '.join(variant_errors[:4]) }")
                 except Exception as exc:
                     errors.append(f"{method} {candidate or 'latest'}: {exc}")
-                    temp_path.unlink(missing_ok=True)
+                temp_path.unlink(missing_ok=True)
 
         detail = "; ".join(errors[-8:])
         raise AcquisitionError(

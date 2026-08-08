@@ -120,6 +120,33 @@ def download_manual(http: HttpClient, url: str, destination: Path) -> DownloadRe
     return http.download(url, destination, max_size=1_500_000_000)
 
 
+def download_apkmirror_candidates(
+    http: HttpClient,
+    resolver: ApkMirrorResolver,
+    app: AppConfig,
+    version: str,
+    destination_dir: Path,
+) -> list[tuple[DownloadResult, str, str]]:
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    candidates = resolver.resolve_candidates(app, version)
+    results: list[tuple[DownloadResult, str, str]] = []
+    for index, (direct_url, source_page) in enumerate(candidates):
+        destination = destination_dir / f"candidate-{index}.bin"
+        try:
+            result = http.download(
+                direct_url,
+                destination,
+                max_size=1_500_000_000,
+                extra_headers={"Referer": source_page},
+            )
+            results.append((result, source_page, version))
+        except Exception:
+            destination.unlink(missing_ok=True)
+    if not results:
+        raise AcquisitionError(f"All APKMirror variants failed to download for {app.key} {version}")
+    return results
+
+
 def download_apkmirror(
     http: HttpClient,
     resolver: ApkMirrorResolver,
@@ -128,10 +155,13 @@ def download_apkmirror(
     destination: Path,
 ) -> tuple[DownloadResult, str, str]:
     if version:
-        direct_url, source_page = resolver.resolve(app, version)
-        resolved_version = version
-    else:
-        direct_url, source_page, resolved_version = resolver.resolve_latest(app)
+        results = download_apkmirror_candidates(http, resolver, app, version, destination.parent)
+        result, source_page, resolved_version = results[0]
+        if result.path != destination:
+            result.path.replace(destination)
+            result = DownloadResult(destination, result.size, result.sha256, result.final_url)
+        return result, source_page, resolved_version
+    direct_url, source_page, resolved_version = resolver.resolve_latest(app)
     result = http.download(
         direct_url,
         destination,
