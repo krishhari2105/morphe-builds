@@ -4,15 +4,33 @@ on:
   workflow_dispatch:
     inputs:
       patch_sources:
-        description: "Patch sources (comma-separated, 'scheduled', or 'all')"
+        description: "Patch source"
         required: true
         default: "morphe"
-        type: string
+        type: choice
+        options:
+          - morphe
+          - morphe-dev
+          - piko
+          - piko-dev
+          - de-revanced
+          - hoo-dles
+          - scheduled
+          - all
       apps:
-        description: "Apps (comma-separated or 'all')"
+        description: "App to patch"
         required: true
         default: "all"
-        type: string
+        type: choice
+        options:
+          - all
+          - youtube
+          - yt-music
+          - reddit
+          - twitter
+          - spotify
+          - gphotos
+          - proton-vpn
       version_overrides:
         description: "Per-app versions as JSON, for example {\"youtube\":\"20.12.46\"}"
         required: false
