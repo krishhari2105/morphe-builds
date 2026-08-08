@@ -19,6 +19,35 @@ class ApkMirrorTests(unittest.TestCase):
             "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/",
         )
 
+    def test_constructs_modern_twitter_release_urls(self):
+        app = load_config().apps["twitter"]
+        urls = ApkMirrorResolver._constructed_release_urls(app, "12.7.1-release.0")
+        self.assertEqual(
+            urls[0],
+            "https://www.apkmirror.com/apk/x-corp/twitter/x-12-7-1-release-0-release/",
+        )
+        self.assertIn(
+            "https://www.apkmirror.com/apk/x-corp/twitter/x-12-7-1-release-0-release/",
+            urls,
+        )
+
+    def test_fallback_tries_modern_twitter_release_url(self):
+        app = load_config().apps["twitter"]
+        resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
+        resolver._html = lambda url, referer=None: ("", url)
+        attempted = []
+
+        def resolve_from_release(app, version, link, listing):
+            attempted.append(link.href)
+            if "/x-12-7-1-release-0-release/" in link.href:
+                return [("https://download.example/twitter.apk", link.href)]
+            raise RuntimeError("not found")
+
+        resolver._resolve_from_release = resolve_from_release
+        candidates = resolver.resolve_candidates(app, "12.7.1-release.0")
+        self.assertEqual(candidates[0][0], "https://download.example/twitter.apk")
+        self.assertEqual(attempted[0], "https://www.apkmirror.com/apk/x-corp/twitter/x-12-7-1-release-0-release/")
+
     def test_latest_candidates_are_sorted_and_skip_prereleases(self):
         app = load_config().apps["youtube"]
         resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
