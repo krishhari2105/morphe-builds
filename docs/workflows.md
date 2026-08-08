@@ -6,8 +6,8 @@
 
 Inputs:
 
-- `patch_sources`: comma-separated source keys, `scheduled`, or `all`.
-- `apps`: comma-separated app keys or `all`.
+- `patch_sources`: a dropdown containing each configured source, `scheduled`, or `all`.
+- `apps`: a dropdown containing `all` and each supported app. Manual dispatch intentionally selects one app at a time; scheduled builds still use `all`.
 - `version_overrides`: JSON object mapping app keys to exact versions.
 - `base_urls`: JSON object mapping app keys to direct HTTPS downloads.
 - `publish`: create/reuse a deterministic GitHub Release when true.

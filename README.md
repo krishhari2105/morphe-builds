@@ -20,8 +20,8 @@ APKMirror has no supported download API and can block GitHub-hosted runners. Whe
 ## One-click build
 
 1. Open **Actions → Build patched apps → Run workflow**.
-2. Keep `patch_sources` as `morphe` or enter comma-separated sources such as `morphe,morphe-dev`.
-3. Keep `apps` as `all` or enter keys such as `youtube,yt-music`.
+2. Choose the patch source from the `patch_sources` dropdown.
+3. Choose `all` or one app from the `apps` dropdown.
 4. Normally leave `version_overrides` and `base_urls` as `{}`.
 5. Run the workflow.
 
