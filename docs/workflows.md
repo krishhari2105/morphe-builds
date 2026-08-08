@@ -27,9 +27,15 @@ The workflow uses separate runners. The read-only preparation job downloads and 
 
 ## Watch Morphe releases
 
-`upstream-watch.yml` runs at minute 17 every two hours. It resolves the newest stable/prerelease patch release and current Morphe CLI release. If no release tag starts with that exact source/patch/CLI identity, it calls the reusable build workflow.
+`upstream-watch.yml` runs daily at 08:00 IST (02:30 UTC). It resolves the newest stable/prerelease patch release and current Morphe CLI release. If no release tag starts with that exact source/patch/CLI identity, it calls the reusable build workflow.
 
 GitHub scheduled workflows can be delayed. Upstream repositories cannot directly trigger this repository unless they cooperate or an external dispatcher is configured, so polling remains the reliable mechanism.
+
+## Family download website
+
+`deploy-pages.yml` generates a static catalog from published releases and deploys it to GitHub Pages. It runs after a release is published, on pushes to `main`, or manually. The generator reads each complete `build-manifest.json`, selects the newest build for each visible app in `config/catalog.json`, and links to the existing GitHub Release assets.
+
+YouTube and YouTube Music are featured by default. To show another app, set its `visible` value to `true` in `config/catalog.json` and push to `main`. The repository must have **Settings → Pages → Source: GitHub Actions** enabled once before the first deployment.
 
 ## Base acquisition order
 

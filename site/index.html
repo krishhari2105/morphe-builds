@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Morphe Apps</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#f0f6fc; --muted:#8b949e; --accent:#58a6ff; --accent2:#3fb950; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:radial-gradient(circle at top,#17243a 0,#0d1117 42rem); color:var(--text); font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(100% - 2rem, 980px); margin:auto; padding:2.5rem 0 4rem; }
+    header { margin-bottom:2rem; }
+    .eyebrow { color:var(--accent); font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:.78rem; }
+    h1 { font-size:clamp(2.2rem,7vw,4.5rem); line-height:1; margin:.5rem 0 1rem; letter-spacing:-.06em; }
+    h2 { margin:2.5rem 0 1rem; font-size:1.35rem; }
+    .intro { color:var(--muted); max-width:620px; font-size:1.05rem; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; }
+    .card { background:linear-gradient(145deg,#1d2633,var(--panel)); border:1px solid var(--line); border-radius:20px; padding:1.25rem; display:flex; flex-direction:column; min-height:255px; box-shadow:0 12px 30px #0003; }
+    .featured .card { border-color:#2f81f7; }
+    .card-top { display:flex; justify-content:space-between; gap:1rem; align-items:start; }
+    .icon { width:52px; height:52px; border-radius:15px; display:grid; place-items:center; background:#263449; color:#79c0ff; font-size:1.45rem; font-weight:800; }
+    .pill { color:var(--accent2); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    h3 { margin:.9rem 0 .25rem; font-size:1.3rem; }
+    .tagline { color:var(--muted); margin:0 0 1rem; }
+    .meta { color:var(--muted); font-size:.84rem; margin-top:auto; padding-top:1rem; }
+    .actions { display:flex; gap:.6rem; margin-top:1rem; }
+    a.button { flex:1; border-radius:11px; padding:.72rem .85rem; text-align:center; text-decoration:none; font-weight:750; background:var(--accent); color:#08111d; }
+    a.secondary { background:#21262d; color:var(--text); border:1px solid var(--line); }
+    details { margin-top:2.5rem; }
+    summary { cursor:pointer; color:var(--accent); font-weight:700; }
+    .help { margin-top:2.5rem; padding:1.25rem; border:1px solid var(--line); border-radius:16px; color:var(--muted); background:#161b22aa; }
+    .help strong { color:var(--text); }
+    footer { margin-top:2rem; color:var(--muted); font-size:.82rem; }
+    .empty { color:var(--muted); border:1px dashed var(--line); padding:1rem; border-radius:12px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Morphe Apps</div>
+    <h1>Patched apps, made simple.</h1>
+    <p class="intro">Download the latest family-friendly builds below. You do not need to browse GitHub or understand releases—tap Download and install the app.</p>
+  </header>
+  <section class="featured"><h2>Recommended</h2><div id="featured" class="grid"><p class="empty">Loading the latest builds…</p></div></section>
+  <details><summary>Show other apps</summary><div id="other" class="grid" style="margin-top:1rem"></div></details>
+  <section class="help"><strong>Installing an update</strong><br>Download the APK, open it, and allow your browser or file manager to install unknown apps if Android asks. The patched app uses the same signing key as previous builds, so updates should install normally.</section>
+  <footer id="updated">Catalog loading…</footer>
+</main>
+<script>
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const size = bytes => bytes ? `${(bytes / 1048576).toFixed(1)} MB` : 'APK';
+  const card = app => `<article class="card"><div class="card-top"><div class="icon">${esc(app.name.slice(0,1))}</div><span class="pill">${esc(app.source || 'Morphe')}</span></div><h3>${esc(app.name)}</h3><p class="tagline">${esc(app.tagline)}</p><div class="meta">Version ${esc(app.version || 'latest')} · ${size(app.size)}<br>${esc(new Date(app.updated_at).toLocaleDateString())}</div><div class="actions"><a class="button" href="${esc(app.download_url)}">Download</a><a class="button secondary" href="${esc(app.release_url)}">Details</a></div></article>`;
+  fetch('catalog.json').then(response => response.json()).then(data => {
+    const featured = new Set(data.featured || []);
+    const primary = data.apps.filter(app => featured.has(app.app));
+    const other = data.apps.filter(app => !featured.has(app.app));
+    document.querySelector('#featured').innerHTML = primary.length ? primary.map(card).join('') : '<p class="empty">No featured builds are published yet.</p>';
+    document.querySelector('#other').innerHTML = other.length ? other.map(card).join('') : '<p class="empty">No other apps are enabled yet.</p>';
+    document.querySelector('#updated').textContent = `Updated automatically from GitHub Releases · ${data.generated_at === 'local' ? 'preview' : 'build ' + data.generated_at}`;
+  }).catch(() => document.querySelector('#featured').innerHTML = '<p class="empty">The catalog is temporarily unavailable. Please try again later.</p>');
+</script>
+</body>
+</html>

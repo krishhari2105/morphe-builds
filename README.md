@@ -5,7 +5,7 @@ One repository for discovering compatible app versions, acquiring source APK/APK
 ## What is automated
 
 - Manual **Build patched apps** workflow with app/source/version controls.
-- Morphe stable and development release checks every two hours.
+- Morphe stable and development release checks daily at 8:00 AM IST.
 - Exact Morphe patch and CLI release/asset resolution with SHA-256 verification.
 - Compatible-version discovery through `morphe-desktop list-versions`.
 - Best-effort APKMirror release and arm64/universal variant discovery.
@@ -62,6 +62,12 @@ Every manual URL is still checked for HTTPS, file integrity, package, version, a
 | `SIGNING_CERT_SHA256` | Optional but recommended expected certificate SHA-256 fingerprint. |
 
 The tracked `morphe.keystore` remains only during migration. Configure and test the secrets before removing it. The key is already present in public Git history; moving it to a secret prevents continued accidental distribution but cannot make the old key private again.
+
+## Family download website
+
+The `Deploy app catalog` workflow publishes a simple mobile-friendly catalog to GitHub Pages. YouTube and YouTube Music are featured by default; additional apps can be enabled in [`config/catalog.json`](config/catalog.json). The site links directly to GitHub Release assets and never stores APKs in the Pages site.
+
+After enabling **Settings → Pages → Source: GitHub Actions**, visit the repository's Pages URL. See [workflow usage](docs/workflows.md) for the update flow.
 
 See [workflow usage](docs/workflows.md), [configuration](docs/configuration.md), [security](docs/security.md), and [troubleshooting](docs/troubleshooting.md).
 
