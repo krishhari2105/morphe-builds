@@ -117,11 +117,32 @@ class ApkMirrorResolver:
             if not match:
                 continue
             version = match.group(1).rstrip("-._")
-            direct, source_page = self._resolve_from_release(app, version, link, listing_url)
-            return direct, source_page, version
+            candidates = self._resolve_from_release(app, version, link, listing_url)
+            if candidates:
+                direct, source_page = candidates[0]
+                return direct, source_page, version
         raise ApkMirrorError(f"Could not determine the latest APKMirror version for {app.name}")
 
     def resolve(self, app: AppConfig, version: str) -> tuple[str, str]:
+        listing_html, listing_url = self._html(app.apkmirror_url)
+        version_tokens = _slug_version(version)
+        release_links = [
+            link
+            for link in self._links(listing_html, listing_url)
+            if "/apk/" in link.href
+            and any(token in (link.href + " " + link.text).lower() for token in version_tokens)
+            and "release" in link.href.lower()
+        ]
+        if not release_links:
+            release_link = Link(self._constructed_release_url(app, version), f"{app.name} {version}")
+        else:
+            release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
+        candidates = self._resolve_from_release(app, version, release_link, listing_url)
+        if not candidates:
+            raise ApkMirrorError(f"No downloadable variants found for {app.name} {version}")
+        return candidates[0]
+
+    def resolve_candidates(self, app: AppConfig, version: str) -> list[tuple[str, str]]:
         listing_html, listing_url = self._html(app.apkmirror_url)
         version_tokens = _slug_version(version)
         release_links = [
@@ -149,7 +170,7 @@ class ApkMirrorResolver:
         version: str,
         release_link: Link,
         listing_url: str,
-    ) -> tuple[str, str]:
+    ) -> list[tuple[str, str]]:
         release_html, release_url = self._html(release_link.href, listing_url)
         candidates = [
             link
@@ -158,23 +179,34 @@ class ApkMirrorResolver:
         ]
         if not candidates:
             raise ApkMirrorError(f"No downloadable variants found for {app.name} {version}")
-        variant = max(candidates, key=lambda link: self._variant_score(link, app))
-
-        download_html, download_page_url = self._html(variant.href, release_url)
-        download_links = self._links(download_html, download_page_url)
-        direct = next((link for link in download_links if link.element_id == "download-link"), None)
-        if direct is None:
-            direct = next(
-                (
-                    link
-                    for link in download_links
-                    if "download.php" in link.href.lower() or "key=" in link.href.lower()
-                ),
-                None,
-            )
-        if direct is None:
-            raise ApkMirrorError("APKMirror download page did not contain a final download link")
-        return self._follow_download_pages(direct.href, download_page_url), variant.href
+        candidates.sort(key=lambda link: self._variant_score(link, app), reverse=True)
+        resolved: list[tuple[str, str]] = []
+        errors: list[str] = []
+        for variant in candidates:
+            try:
+                download_html, download_page_url = self._html(variant.href, release_url)
+                download_links = self._links(download_html, download_page_url)
+                direct = next((link for link in download_links if link.element_id == "download-link"), None)
+                if direct is None:
+                    direct = next(
+                        (
+                            link
+                            for link in download_links
+                            if "download.php" in link.href.lower() or "key=" in link.href.lower()
+                        ),
+                        None,
+                    )
+                if direct is None:
+                    raise ApkMirrorError("download link missing")
+                final_url = self._follow_download_pages(direct.href, download_page_url)
+                if final_url not in {item[0] for item in resolved}:
+                    resolved.append((final_url, variant.href))
+            except ApkMirrorError as exc:
+                errors.append(f"{variant.text or variant.href}: {exc}")
+        if not resolved:
+            detail = "; ".join(errors[:3])
+            raise ApkMirrorError(f"No usable APKMirror variants: {detail}")
+        return resolved
 
     def _follow_download_pages(self, url: str, referer: str) -> str:
         current_url = url
