@@ -3,59 +3,115 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Morphe Apps</title>
+  <title>Morphe Builds — patched apps</title>
   <style>
-    :root { color-scheme: dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#f0f6fc; --muted:#8b949e; --accent:#58a6ff; --accent2:#3fb950; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:radial-gradient(circle at top,#17243a 0,#0d1117 42rem); color:var(--text); font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    main { width:min(100% - 2rem, 980px); margin:auto; padding:2.5rem 0 4rem; }
-    header { margin-bottom:2rem; }
-    .eyebrow { color:var(--accent); font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:.78rem; }
-    h1 { font-size:clamp(2.2rem,7vw,4.5rem); line-height:1; margin:.5rem 0 1rem; letter-spacing:-.06em; }
-    h2 { margin:2.5rem 0 1rem; font-size:1.35rem; }
-    .intro { color:var(--muted); max-width:620px; font-size:1.05rem; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; }
-    .card { background:linear-gradient(145deg,#1d2633,var(--panel)); border:1px solid var(--line); border-radius:20px; padding:1.25rem; display:flex; flex-direction:column; min-height:255px; box-shadow:0 12px 30px #0003; }
-    .featured .card { border-color:#2f81f7; }
-    .card-top { display:flex; justify-content:space-between; gap:1rem; align-items:start; }
-    .icon { width:52px; height:52px; border-radius:15px; display:grid; place-items:center; background:#263449; color:#79c0ff; font-size:1.45rem; font-weight:800; }
-    .pill { color:var(--accent2); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-    h3 { margin:.9rem 0 .25rem; font-size:1.3rem; }
-    .tagline { color:var(--muted); margin:0 0 1rem; }
-    .meta { color:var(--muted); font-size:.84rem; margin-top:auto; padding-top:1rem; }
+    :root {
+      color-scheme: light;
+      --paper: #f2f0e8;
+      --ink: #171714;
+      --soft-ink: #625f56;
+      --rule: #c9c5b9;
+      --rust: #bc4b2c;
+      --rust-dark: #89331f;
+      --night: #1b1b18;
+      --white: #f9f8f3;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+    a { color: inherit; }
+    .shell { width: min(100% - 3rem, 1260px); margin: 0 auto; }
+    .nav { min-height: 76px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--rule); }
+    .wordmark { display:flex; align-items:center; gap:.7rem; text-decoration:none; font-size:1.05rem; font-weight:800; letter-spacing:-.04em; }
+    .mark { width:31px; height:31px; display:grid; place-items:center; background:var(--ink); color:var(--paper); font-family:Georgia, serif; font-size:1.15rem; transform:rotate(-8deg); }
+    .nav-links { display:flex; gap:1.6rem; align-items:center; font-size:.9rem; }
+    .nav-links a { text-decoration:none; }
+    .nav-links a:hover { color:var(--rust); }
+    .nav-cta { background:var(--ink); color:var(--white); padding:.65rem 1rem; border-radius:999px; font-weight:700; }
+    .hero { display:grid; grid-template-columns:1.2fr .8fr; gap:4rem; padding:7rem 0 6rem; align-items:end; }
+    .kicker { color:var(--rust); font-size:.75rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
+    h1 { max-width:760px; font-size:clamp(3.5rem,8vw,7.9rem); line-height:.88; letter-spacing:-.085em; margin:1rem 0 0; }
+    .hero-note { max-width:360px; margin:0 0 .4rem; color:var(--soft-ink); font:clamp(1.35rem,2.4vw,2rem)/1.15 Georgia, 'Times New Roman', serif; }
+    .hero-note em { color:var(--rust); }
+    .section-head { display:flex; align-items:baseline; justify-content:space-between; gap:1rem; border-top:1px solid var(--ink); padding-top:1rem; margin-bottom:1.4rem; }
+    h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; margin:0; }
+    .section-note { color:var(--soft-ink); font-size:.85rem; }
+    .grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:1.25rem; }
+    .card { background:var(--white); border:1px solid var(--rule); min-height:280px; padding:1.35rem; display:flex; flex-direction:column; position:relative; }
+    .featured .card:first-child { background:var(--night); color:var(--white); border-color:var(--night); }
+    .featured .card:first-child .muted, .featured .card:first-child .meta { color:#bcbab1; }
+    .card-top { display:flex; justify-content:space-between; align-items:start; }
+    .app-number { color:var(--rust); font:1.4rem Georgia, serif; }
+    .source { color:var(--rust); font-size:.7rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h3 { font-size:clamp(1.8rem,3vw,2.8rem); letter-spacing:-.065em; margin:3.1rem 0 .35rem; }
+    .tagline { font:1.1rem/1.2 Georgia, 'Times New Roman', serif; margin:0; max-width:300px; }
+    .meta { color:var(--soft-ink); font-size:.78rem; line-height:1.55; margin-top:auto; padding-top:2rem; }
     .actions { display:flex; gap:.6rem; margin-top:1rem; }
-    a.button { flex:1; border-radius:11px; padding:.72rem .85rem; text-align:center; text-decoration:none; font-weight:750; background:var(--accent); color:#08111d; }
-    a.secondary { background:#21262d; color:var(--text); border:1px solid var(--line); }
-    details { margin-top:2.5rem; }
-    summary { cursor:pointer; color:var(--accent); font-weight:700; }
-    .help { margin-top:2.5rem; padding:1.25rem; border:1px solid var(--line); border-radius:16px; color:var(--muted); background:#161b22aa; }
-    .help strong { color:var(--text); }
-    footer { margin-top:2rem; color:var(--muted); font-size:.82rem; }
-    .empty { color:var(--muted); border:1px dashed var(--line); padding:1rem; border-radius:12px; }
+    .button { border:1px solid var(--ink); text-decoration:none; padding:.7rem .9rem; font-size:.8rem; font-weight:800; text-align:center; flex:1; }
+    .button.primary { background:var(--rust); border-color:var(--rust); color:var(--white); }
+    .button.primary:hover { background:var(--rust-dark); }
+    .button.secondary { background:transparent; }
+    .featured .card:first-child .button.secondary { border-color:#77756c; }
+    details { margin:5rem 0 0; }
+    summary { cursor:pointer; border-top:1px solid var(--ink); padding:1rem 0; font-weight:800; list-style:none; display:flex; justify-content:space-between; }
+    summary::after { content:'+'; color:var(--rust); font-size:1.2rem; }
+    details[open] summary::after { content:'−'; }
+    .other-grid { margin-top:1.5rem; grid-template-columns:repeat(3, minmax(0,1fr)); }
+    .other-grid .card { min-height:225px; }
+    .other-grid h3 { font-size:1.8rem; margin-top:2.3rem; }
+    .help { display:grid; grid-template-columns:.7fr 1.3fr; gap:2rem; background:var(--night); color:var(--white); padding:2.2rem; margin:6rem 0 1rem; }
+    .help strong { color:#e56a47; font:2rem/1 Georgia, serif; }
+    .help p { margin:0; color:#c5c2b9; max-width:510px; font-size:.92rem; }
+    footer { display:flex; justify-content:space-between; gap:1rem; padding:1.5rem 0 3rem; color:var(--soft-ink); font-size:.75rem; border-top:1px solid var(--rule); }
+    .empty { color:var(--soft-ink); border:1px dashed var(--rule); padding:1rem; }
+    :focus-visible { outline:3px solid var(--rust); outline-offset:3px; }
+    @media (max-width: 760px) {
+      .shell { width:min(100% - 2rem, 620px); }
+      .nav { min-height:64px; }
+      .nav-links a:not(.nav-cta) { display:none; }
+      .hero { grid-template-columns:1fr; gap:2rem; padding:4rem 0 4.5rem; }
+      .hero-note { margin-left:2rem; }
+      .grid, .other-grid, .help { grid-template-columns:1fr; }
+      .other-grid .card { min-height:225px; }
+      .help { gap:1.5rem; margin-top:4rem; }
+      footer { flex-direction:column; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
   </style>
 </head>
 <body>
-<main>
-  <header>
-    <div class="eyebrow">Morphe Apps</div>
-    <h1>Patched apps, made simple.</h1>
-  </header>
-  <section class="featured"><h2>Recommended</h2><div id="featured" class="grid"><p class="empty">Loading the latest builds…</p></div></section>
-  <details><summary>Show other apps</summary><div id="other" class="grid" style="margin-top:1rem"></div></details>
-  <section class="help"><strong>Installing an update</strong><br>Download the APK, open it, and allow your browser or file manager to install unknown apps if Android asks. The patched app uses the same signing key as previous builds, so updates should install normally.</section>
-  <footer id="updated">Catalog loading…</footer>
-</main>
+  <div class="shell">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="wordmark" href="./"><span class="mark">M</span><span>Morphe Builds</span></a>
+      <div class="nav-links"><a href="#recommended">Recommended</a><a href="#other">Other apps</a><a class="nav-cta" href="#help">How to install</a></div>
+    </nav>
+
+    <header class="hero">
+      <div><div class="kicker">A small library of better builds</div><h1>Patched apps<br>made <span style="color:var(--rust)">simple.</span></h1></div>
+      <p class="hero-note">The latest releases, selected for the people who just want their apps to <em>work.</em></p>
+    </header>
+
+    <section id="recommended" class="featured">
+      <div class="section-head"><h2>Recommended</h2><span class="section-note">Stable builds first</span></div>
+      <div id="featured" class="grid"><p class="empty">Loading the latest builds…</p></div>
+    </section>
+
+    <details id="other"><summary>Other apps</summary><div id="other-grid" class="grid other-grid"></div></details>
+
+    <section id="help" class="help"><strong>Install in a minute.</strong><p>Choose Download, open the APK, and allow your browser or file manager to install unknown apps if Android asks. Updates use the same signing key as earlier builds.</p></section>
+    <footer><span id="updated">Catalog loading…</span><span>Built for your Android devices.</span></footer>
+  </div>
 <script>
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const size = bytes => bytes ? `${(bytes / 1048576).toFixed(1)} MB` : 'APK';
-  const card = app => `<article class="card"><div class="card-top"><div class="icon">${esc(app.name.slice(0,1))}</div><span class="pill">${esc(app.source || 'Morphe')}</span></div><h3>${esc(app.name)}</h3><p class="tagline">${esc(app.tagline)}</p><div class="meta">Version ${esc(app.version || 'latest')} · ${size(app.size)}<br>${esc(new Date(app.updated_at).toLocaleDateString())}</div><div class="actions"><a class="button" href="${esc(app.download_url)}">Download</a><a class="button secondary" href="${esc(app.release_url)}">Details</a></div></article>`;
+  const card = (app, index, extra = false) => `<article class="card"><div class="card-top"><span class="app-number">${String(index + 1).padStart(2, '0')}</span><span class="source">${esc(app.source || 'Morphe')}</span></div><h3>${esc(app.name)}</h3><p class="tagline">${esc(app.tagline)}</p><div class="meta">Version ${esc(app.version || 'latest')} · ${size(app.size)}<br>Updated ${esc(new Date(app.updated_at).toLocaleDateString())}</div><div class="actions"><a class="button primary" href="${esc(app.download_url)}">Download</a><a class="button secondary" href="${esc(app.release_url)}">Details</a></div></article>`;
   fetch('catalog.json').then(response => response.json()).then(data => {
     const featured = new Set(data.featured || []);
     const primary = data.apps.filter(app => featured.has(app.app));
     const other = data.apps.filter(app => !featured.has(app.app));
-    document.querySelector('#featured').innerHTML = primary.length ? primary.map(card).join('') : '<p class="empty">No featured builds are published yet.</p>';
-    document.querySelector('#other').innerHTML = other.length ? other.map(card).join('') : '<p class="empty">No other apps are enabled yet.</p>';
-    document.querySelector('#updated').textContent = `Updated automatically from GitHub Releases · ${data.generated_at === 'local' ? 'preview' : 'build ' + data.generated_at}`;
+    document.querySelector('#featured').innerHTML = primary.length ? primary.map((app, i) => card(app, i)).join('') : '<p class="empty">No featured builds are published yet.</p>';
+    document.querySelector('#other-grid').innerHTML = other.length ? other.map((app, i) => card(app, i, true)).join('') : '<p class="empty">No other apps are enabled yet.</p>';
+    document.querySelector('#updated').textContent = `Catalog updated from GitHub Releases · ${data.generated_at === 'local' ? 'preview' : 'build ' + data.generated_at}`;
   }).catch(() => document.querySelector('#featured').innerHTML = '<p class="empty">The catalog is temporarily unavailable. Please try again later.</p>');
 </script>
 </body>
