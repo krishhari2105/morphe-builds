@@ -59,9 +59,13 @@
     .other-grid { margin-top:1.5rem; grid-template-columns:repeat(3, minmax(0,1fr)); }
     .other-grid .card { min-height:225px; }
     .other-grid h3 { font-size:1.8rem; margin-top:2.3rem; }
-    .help { display:grid; grid-template-columns:.7fr 1.3fr; gap:2rem; background:var(--night); color:var(--white); padding:2.2rem; margin:6rem 0 1rem; border-radius:24px; }
-    .help strong { color:#e56a47; font:2rem/1 Georgia, serif; }
+    .help { display:grid; grid-template-columns:.8fr 1.2fr; gap:2.5rem; background:var(--night); color:var(--white); padding:2.2rem; margin:6rem 0 1rem; border-radius:24px; }
+    .help strong { display:block; color:#e56a47; font:2rem/1 Georgia, serif; }
     .help p { margin:0; color:#c5c2b9; max-width:510px; font-size:.92rem; }
+    .microg-card { border:1px solid #4d4b44; border-radius:18px; padding:1.35rem; display:flex; flex-direction:column; gap:.7rem; }
+    .microg-card .kicker { color:#e56a47; }
+    .microg-card h3 { color:var(--white); font-size:1.8rem; margin:0; }
+    .microg-card .button { align-self:flex-start; margin-top:.25rem; }
     footer { display:flex; justify-content:space-between; gap:1rem; padding:1.5rem 0 3rem; color:var(--soft-ink); font-size:.75rem; border-top:1px solid var(--rule); }
     .empty { color:var(--soft-ink); border:1px dashed var(--rule); padding:1rem; }
     :focus-visible { outline:3px solid var(--rust); outline-offset:3px; }
@@ -98,7 +102,10 @@
 
     <details id="other"><summary>Other apps</summary><div id="other-grid" class="grid other-grid"></div></details>
 
-    <section id="help" class="help"><strong>Install in a minute.</strong><div><p>Choose Download, open the APK, and allow your browser or file manager to install unknown apps if Android asks. Updates use the same signing key as earlier builds.</p><a class="button primary" href="https://github.com/MorpheApp/MicroG-RE/releases/latest" target="_blank" rel="noopener">Download MicroG</a></div></section>
+    <section id="help" class="help">
+      <div><strong>Install in a minute.</strong><p style="margin-top:1rem">Download a patched app, open the APK, and allow your browser or file manager to install unknown apps if Android asks. Updates use the same signing key as earlier builds.</p></div>
+      <div class="microg-card"><div class="kicker">Required companion</div><h3>Morphe MicroG</h3><p>MicroG RE is required for the patched YouTube and YouTube Music apps to sign in and work correctly. Install it first, then install the patched app.</p><a class="button primary" href="https://github.com/MorpheApp/MicroG-RE/releases/latest" target="_blank" rel="noopener">Get latest MicroG</a></div>
+    </section>
     <footer><span id="updated">Catalog loading…</span><span>Built for your Android devices.</span></footer>
   </div>
 <script>
