@@ -157,10 +157,10 @@ class ApkMirrorResolver:
             and "release" in link.href.lower()
         ]
         if not release_links:
-            release_link = Link(self._constructed_release_url(app, version), f"{app.name} {version}")
+            candidates = self._resolve_constructed_candidates(app, version, listing_url)
         else:
             release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
-        candidates = self._resolve_from_release(app, version, release_link, listing_url)
+            candidates = self._resolve_from_release(app, version, release_link, listing_url)
         if not candidates:
             raise ApkMirrorError(f"No downloadable variants found for {app.name} {version}")
         return candidates[0]
@@ -176,16 +176,43 @@ class ApkMirrorResolver:
             and "release" in link.href.lower()
         ]
         if not release_links:
-            release_link = Link(self._constructed_release_url(app, version), f"{app.name} {version}")
-        else:
-            release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
+            return self._resolve_constructed_candidates(app, version, listing_url)
+        release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
         return self._resolve_from_release(app, version, release_link, listing_url)
 
-    @staticmethod
-    def _constructed_release_url(app: AppConfig, version: str) -> str:
+    def _resolve_constructed_candidates(
+        self,
+        app: AppConfig,
+        version: str,
+        listing_url: str,
+    ) -> list[tuple[str, str]]:
+        errors: list[str] = []
+        for release_url in self._constructed_release_urls(app, version):
+            release_link = Link(release_url, f"{app.name} {version}")
+            try:
+                return self._resolve_from_release(app, version, release_link, listing_url)
+            except Exception as exc:
+                errors.append(f"{release_url}: {exc}")
+        detail = f": {'; '.join(errors[:3])}" if errors else ""
+        raise ApkMirrorError(f"Could not resolve APKMirror release for {app.name} {version}{detail}")
+
+    @classmethod
+    def _constructed_release_urls(cls, app: AppConfig, version: str) -> list[str]:
         app_slug = urlsplit(app.apkmirror_url).path.rstrip("/").split("/")[-1]
         version_slug = re.sub(r"[^a-z0-9]+", "-", version.lower().lstrip("v")).strip("-")
-        return urljoin(app.apkmirror_url, f"{app_slug}-{version_slug}-release/")
+        if app.key == "twitter":
+            prefixes = ["x", app_slug]
+            suffixes = ["release", "release-0-release"]
+            return [
+                urljoin(app.apkmirror_url, f"{prefix}-{version_slug}-{suffix}/")
+                for prefix in prefixes
+                for suffix in suffixes
+            ]
+        return [urljoin(app.apkmirror_url, f"{app_slug}-{version_slug}-release/")]
+
+    @classmethod
+    def _constructed_release_url(cls, app: AppConfig, version: str) -> str:
+        return cls._constructed_release_urls(app, version)[-1]
 
     def _resolve_from_release(
         self,
