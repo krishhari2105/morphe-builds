@@ -4,25 +4,25 @@
   "apps": {
     "youtube": {
       "visible": true,
-      "preferred_sources": ["morphe", "morphe-dev"]
+      "preferred_sources": ["morphe", "morphe-dev"],
       "tagline": "A cleaner YouTube experience",
       "description": "The latest patched YouTube build for family devices."
     },
     "yt-music": {
       "visible": true,
-      "preferred_sources": ["morphe", "morphe-dev"]
+      "preferred_sources": ["morphe", "morphe-dev"],
       "tagline": "Music without the usual interruptions",
       "description": "The latest patched YouTube Music build."
     },
     "reddit": {
       "visible": true,
-      "preferred_sources": ["morphe", "morphe-dev"]
+      "preferred_sources": ["morphe", "morphe-dev"],
       "tagline": "A more comfortable Reddit experience",
       "description": "The latest patched Reddit build."
     },
     "twitter": {
       "visible": true,
-      "preferred_sources": ["piko", "piko-dev"]
+      "preferred_sources": ["piko", "piko-dev"],
       "tagline": "A cleaner X experience",
       "description": "The latest patched X build."
     },
