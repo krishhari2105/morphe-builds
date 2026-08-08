@@ -25,7 +25,8 @@ class ApkMirrorTests(unittest.TestCase):
         resolver._html = lambda url, referer=None: (
             '<a href="/apk/google/youtube/youtube-19-1-0-release/">19.1.0</a>'
             '<a href="/apk/google/youtube/youtube-20-12-46-release/">20.12.46</a>'
-            '<a href="/apk/google/youtube/youtube-21-0-0-beta-release/">21.0.0 beta</a>',
+            '<a href="/apk/google/youtube/youtube-21-0-0-beta-release/">21.0.0 beta</a>'
+            '<a href="/apk/google-inc/chrome/google-chrome-151-0-7922-71-release/">Chrome 151.0.7922.71</a>',
             url,
         )
         resolver._resolve_from_release = lambda app, version, link, listing: [

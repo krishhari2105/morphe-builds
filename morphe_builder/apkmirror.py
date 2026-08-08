@@ -107,8 +107,15 @@ class ApkMirrorResolver:
         listing_html, listing_url = self._html(app.apkmirror_url)
         release_candidates: list[tuple[str, Link]] = []
         seen: set[str] = set()
+        app_path = urlsplit(app.apkmirror_url).path.rstrip("/").lower()
         for link in self._links(listing_html, listing_url):
-            if "/apk/" not in link.href or "release" not in link.href.lower() or link.href in seen:
+            link_path = urlsplit(link.href).path.lower()
+            if (
+                "/apk/" not in link_path
+                or not link_path.startswith(app_path + "/")
+                or "release" not in link_path
+                or link.href in seen
+            ):
                 continue
             haystack = " ".join(filter(None, [link.text, link.title, link.href]))
             lower = haystack.lower()
