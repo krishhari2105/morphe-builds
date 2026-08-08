@@ -46,7 +46,7 @@ def main() -> int:
     catalog = json.loads((ROOT / "config" / "catalog.json").read_text(encoding="utf-8"))
     visible = {key: value for key, value in catalog["apps"].items() if value.get("visible")}
     releases = request_json(f"{API}/repos/{repository}/releases?per_page=100", token)
-    latest: dict[str, dict] = {}
+    candidates_by_app: dict[str, list[dict]] = {}
 
     for release in releases if isinstance(releases, list) else []:
         if release.get("draft") or not release.get("published_at"):
@@ -87,9 +87,30 @@ def main() -> int:
                 "sha256": result.get("output_sha256") or asset.get("digest", "").removeprefix("sha256:"),
                 "download_url": asset["browser_download_url"],
             }
-            current = latest.get(app_key)
-            if not current or candidate["updated_at"] > current["updated_at"]:
-                latest[app_key] = candidate
+            candidates_by_app.setdefault(app_key, []).append(candidate)
+
+    latest: dict[str, dict] = {}
+    for app_key, candidates in candidates_by_app.items():
+        preferred_sources = visible[app_key].get("preferred_sources", [])
+        best_rank = min(
+            preferred_sources.index(item["source"])
+            if item["source"] in preferred_sources
+            else len(preferred_sources)
+            for item in candidates
+        )
+        latest[app_key] = max(
+            (
+                item
+                for item in candidates
+                if (
+                    preferred_sources.index(item["source"])
+                    if item["source"] in preferred_sources
+                    else len(preferred_sources)
+                )
+                == best_rank
+            ),
+            key=lambda item: item["updated_at"] or "",
+        )
 
     ordered = []
     for app_key in catalog["featured"]:
