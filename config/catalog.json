@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "featured": ["youtube", "yt-music"],
+  "apps": {
+    "youtube": {
+      "visible": true,
+      "tagline": "A cleaner YouTube experience",
+      "description": "The latest patched YouTube build for family devices."
+    },
+    "yt-music": {
+      "visible": true,
+      "tagline": "Music without the usual interruptions",
+      "description": "The latest patched YouTube Music build."
+    },
+    "reddit": {
+      "visible": false,
+      "tagline": "A more comfortable Reddit experience",
+      "description": "The latest patched Reddit build."
+    },
+    "twitter": {
+      "visible": false,
+      "tagline": "A cleaner X experience",
+      "description": "The latest patched X build."
+    },
+    "spotify": {
+      "visible": false,
+      "tagline": "Your patched music app",
+      "description": "The latest patched Spotify build."
+    },
+    "gphotos": {
+      "visible": false,
+      "tagline": "A more flexible Google Photos experience",
+      "description": "The latest patched Google Photos build."
+    },
+    "proton-vpn": {
+      "visible": false,
+      "tagline": "Private browsing on your Android device",
+      "description": "The latest patched Proton VPN build."
+    }
+  }
+}

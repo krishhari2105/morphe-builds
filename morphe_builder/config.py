@@ -49,6 +49,7 @@ def load_config(config_dir: Path = CONFIG_DIR) -> Config:
     sources_data = _read_json(config_dir / "patch-sources.json")
     patches = _read_json(config_dir / "patches.json")
     tools_data = _read_json(config_dir / "tools.json")
+    catalog = _read_json(config_dir / "catalog.json")
 
     apps: dict[str, AppConfig] = {}
     packages: set[str] = set()
@@ -114,8 +115,26 @@ def load_config(config_dir: Path = CONFIG_DIR) -> Config:
         android_build_tools=str(_required(tools_data, "android_build_tools", "tools")),
     )
 
+    _validate_catalog_config(catalog, apps)
     _validate_patch_config(patches, apps, sources)
     return Config(apps=apps, sources=sources, patches=patches, tools=tools)
+
+
+def _validate_catalog_config(catalog: dict[str, Any], apps: dict[str, AppConfig]) -> None:
+    if catalog.get("schema_version") != 1:
+        raise ConfigError("catalog.schema_version must be 1")
+    entries = catalog.get("apps")
+    if not isinstance(entries, dict) or not entries:
+        raise ConfigError("catalog.apps must be a non-empty object")
+    unknown = set(entries) - set(apps)
+    if unknown:
+        raise ConfigError(f"Unknown apps in catalog: {sorted(unknown)}")
+    for app_key, value in entries.items():
+        if not isinstance(value, dict) or not isinstance(value.get("visible"), bool):
+            raise ConfigError(f"catalog.apps.{app_key}.visible must be a boolean")
+    featured = catalog.get("featured")
+    if not isinstance(featured, list) or any(item not in entries for item in featured):
+        raise ConfigError("catalog.featured must list configured catalog apps")
 
 
 def _validate_patch_list(value: Any, context: str) -> None:
