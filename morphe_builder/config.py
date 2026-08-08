@@ -91,6 +91,9 @@ def load_config(config_dir: Path = CONFIG_DIR) -> Config:
         unknown = set(source_apps) - set(apps) - {"*"}
         if unknown:
             raise ConfigError(f"Unknown apps in sources.{key}: {sorted(unknown)}")
+        compatibility = raw.get("compatibility", {})
+        if not isinstance(compatibility, dict):
+            raise ConfigError(f"sources.{key}.compatibility must be an object")
         sources[key] = SourceConfig(
             key=key,
             name=str(_required(raw, "name", f"sources.{key}")),
@@ -101,6 +104,7 @@ def load_config(config_dir: Path = CONFIG_DIR) -> Config:
             channel=channel,
             scheduled=bool(raw.get("scheduled", False)),
             apps=source_apps,
+            compatibility=compatibility,
         )
 
     if not sources:

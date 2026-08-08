@@ -1,0 +1,40 @@
+name: Build De-ReVanced Google Photos
+
+on:
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: "App to patch"
+        required: true
+        default: all
+        type: choice
+        options: [all, gphotos]
+      version_overrides:
+        description: "Optional exact app versions as JSON"
+        required: false
+        default: "{}"
+        type: string
+      base_urls:
+        description: "Optional APKMirror direct URLs as JSON"
+        required: false
+        default: "{}"
+        type: string
+      publish:
+        description: "Publish a GitHub Release"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      patch_sources: de-revanced
+      apps: ${{ inputs.apps }}
+      version_overrides: ${{ inputs.version_overrides }}
+      base_urls: ${{ inputs.base_urls }}
+      publish: ${{ inputs.publish }}
+    secrets: inherit

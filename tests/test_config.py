@@ -14,6 +14,14 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(config.sources["morphe"].scheduled)
         self.assertEqual(config.sources["morphe-dev"].channel, "prerelease")
 
+    def test_piko_uses_single_mpp_without_shim(self):
+        config = load_config()
+        for source_key in ("piko", "piko-dev"):
+            compatibility = config.sources[source_key].compatibility
+            self.assertEqual(compatibility["patch_mode"], "single-mpp")
+            self.assertEqual(compatibility["shim"], "not-used")
+            self.assertIn("minimum_no_shim_version", compatibility)
+
     def test_patch_selection_merges_defaults_and_app(self):
         config = load_config()
         enable, disable = resolve_patch_selection(config, "morphe", "youtube")

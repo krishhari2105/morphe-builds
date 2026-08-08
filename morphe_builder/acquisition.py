@@ -10,6 +10,7 @@ from .apkmirror import ApkMirrorResolver
 from .http import HttpClient
 from .manifest import sha256_file, slug
 from .models import AppConfig, DownloadResult
+from .versions import version_key
 
 
 class AcquisitionError(RuntimeError):
@@ -25,6 +26,9 @@ class CachedBase:
     version_code: str
     sha256: str
     source_page: str | None
+    final_url: str | None = None
+    requested_version: str | None = None
+    resolution_mode: str = "exact"
 
 
 class BaseCache:
@@ -32,29 +36,53 @@ class BaseCache:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def find(self, app: AppConfig, version: str | None) -> CachedBase | None:
-        for manifest_path in sorted(self.root.glob(f"{app.key}-*.json"), reverse=True):
-            try:
-                raw = json.loads(manifest_path.read_text(encoding="utf-8"))
-                if raw.get("package") != app.package:
-                    continue
-                if version and str(raw.get("version_name", "")).lstrip("v") != version.lstrip("v"):
-                    continue
-                path = self.root / raw["file"]
-                if not path.is_file() or sha256_file(path) != raw.get("sha256"):
-                    continue
-                return CachedBase(
-                    path=path,
-                    app=app.key,
-                    package=app.package,
-                    version_name=str(raw["version_name"]),
-                    version_code=str(raw["version_code"]),
-                    sha256=str(raw["sha256"]),
-                    source_page=raw.get("source_page"),
-                )
-            except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-                continue
+    def _read(self, manifest_path: Path, app: AppConfig, version: str | None) -> CachedBase | None:
+        try:
+            raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if raw.get("package") != app.package:
+                return None
+            if version is not None and str(raw.get("version_name", "")).lstrip("v") != version.lstrip("v"):
+                return None
+            path = self.root / raw["file"]
+            if not path.is_file() or sha256_file(path) != raw.get("sha256"):
+                return None
+            return CachedBase(
+                path=path,
+                app=app.key,
+                package=app.package,
+                version_name=str(raw["version_name"]),
+                version_code=str(raw["version_code"]),
+                sha256=str(raw["sha256"]),
+                source_page=raw.get("source_page"),
+                final_url=raw.get("final_url"),
+                requested_version=raw.get("requested_version"),
+                resolution_mode=str(raw.get("resolution_mode", "exact")),
+            )
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return None
+
+    def find(self, app: AppConfig, version: str) -> CachedBase | None:
+        for manifest_path in sorted(self.root.glob(f"{app.key}-*.json")):
+            cached = self._read(manifest_path, app, version)
+            if cached:
+                return cached
         return None
+
+    def find_latest(self, app: AppConfig) -> CachedBase | None:
+        candidates: list[CachedBase] = []
+        for manifest_path in self.root.glob(f"{app.key}-*.json"):
+            cached = self._read(manifest_path, app, None)
+            if cached:
+                candidates.append(cached)
+        candidates.sort(
+            key=lambda item: (
+                int(item.version_code) if item.version_code.isdigit() else -1,
+                version_key(item.version_name),
+                item.sha256,
+            ),
+            reverse=True,
+        )
+        return candidates[0] if candidates else None
 
     def store(
         self,
@@ -64,6 +92,9 @@ class BaseCache:
         version_name: str,
         version_code: str,
         source_page: str | None,
+        final_url: str | None = None,
+        requested_version: str | None = None,
+        resolution_mode: str = "exact",
     ) -> CachedBase:
         digest = sha256_file(source_path)
         extension = detect_format(source_path)
@@ -80,6 +111,9 @@ class BaseCache:
             "sha256": digest,
             "file": filename,
             "source_page": source_page,
+            "final_url": final_url,
+            "requested_version": requested_version or version_name,
+            "resolution_mode": resolution_mode,
         }
         manifest_path = self.root / f"{app.key}-{slug(version_name)}-{digest[:12]}.json"
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -91,6 +125,9 @@ class BaseCache:
             version_code=version_code,
             sha256=digest,
             source_page=source_page,
+            final_url=final_url,
+            requested_version=requested_version or version_name,
+            resolution_mode=resolution_mode,
         )
 
 
@@ -118,6 +155,32 @@ def download_manual(http: HttpClient, url: str, destination: Path) -> DownloadRe
     if not url.lower().startswith("https://"):
         raise AcquisitionError("Manual base URL must use HTTPS")
     return http.download(url, destination, max_size=1_500_000_000)
+
+
+def download_apkmirror_latest_candidates(
+    http: HttpClient,
+    resolver: ApkMirrorResolver,
+    app: AppConfig,
+    destination_dir: Path,
+) -> list[tuple[DownloadResult, str, str]]:
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    candidates = resolver.resolve_latest_candidates(app)
+    results: list[tuple[DownloadResult, str, str]] = []
+    for index, (direct_url, source_page, version) in enumerate(candidates):
+        destination = destination_dir / f"latest-candidate-{index}.bin"
+        try:
+            result = http.download(
+                direct_url,
+                destination,
+                max_size=1_500_000_000,
+                extra_headers={"Referer": source_page},
+            )
+            results.append((result, source_page, version))
+        except Exception:
+            destination.unlink(missing_ok=True)
+    if not results:
+        raise AcquisitionError(f"All latest APKMirror variants failed for {app.key}")
+    return results
 
 
 def download_apkmirror_candidates(

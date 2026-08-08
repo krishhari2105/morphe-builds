@@ -19,6 +19,21 @@ class ApkMirrorTests(unittest.TestCase):
             "https://www.apkmirror.com/apk/google-inc/youtube/youtube-21-04-223-release/",
         )
 
+    def test_latest_candidates_are_sorted_and_skip_prereleases(self):
+        app = load_config().apps["youtube"]
+        resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
+        resolver._html = lambda url, referer=None: (
+            '<a href="/apk/google/youtube/youtube-19-1-0-release/">19.1.0</a>'
+            '<a href="/apk/google/youtube/youtube-20-12-46-release/">20.12.46</a>'
+            '<a href="/apk/google/youtube/youtube-21-0-0-beta-release/">21.0.0 beta</a>',
+            url,
+        )
+        resolver._resolve_from_release = lambda app, version, link, listing: [
+            (f"https://download.example/{version}.apk", link.href)
+        ]
+        candidates = resolver.resolve_latest_candidates(app)
+        self.assertEqual([item[2] for item in candidates], ["20.12.46", "19.1.0"])
+
     def test_prefers_arm64_variant(self):
         app = load_config().apps["youtube"]
         arm64 = Link("https://www.apkmirror.com/a-arm64-android-apk-download/", "arm64-v8a")

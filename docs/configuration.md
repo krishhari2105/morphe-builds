@@ -25,6 +25,10 @@ A source defines:
 
 `morphe` and `morphe-dev` are scheduled. Other sources remain manual to avoid unexpected high-frequency builds.
 
+### Piko and X-Shim
+
+Current Piko releases use `patch_mode: single-mpp`: the normal Piko `.mpp` bundle is passed to one Morphe patch command. Piko 3.8.0 supports X `12.7.1-release.0`, and X-Shim is not used for X 12.5.0 and newer. Compatibility remains dynamic because the builder asks the resolved MPP for `list-versions`; the documented version is informational. The historical X-Shim was a separate Morphe source used with older X versions through a combined Manager session; this repository does not invent unsupported multi-bundle CLI flags or run shim and Piko as two sequential patch commands.
+
 ## `patches.json`
 
 Patch settings merge in this order:

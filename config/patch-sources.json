@@ -29,7 +29,15 @@
       "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
       "channel": "stable",
       "scheduled": false,
-      "apps": ["twitter"]
+      "apps": ["twitter"],
+      "compatibility": {
+        "app": "twitter",
+        "current_supported_version": "12.7.1-release.0",
+        "patch_mode": "single-mpp",
+        "minimum_no_shim_version": "12.5.0-release.0",
+        "shim": "not-used",
+        "notes": "Current Piko releases use the normal Piko MPP only; do not add undocumented multi-bundle CLI flags."
+      }
     },
     "piko-dev": {
       "name": "Piko development",
@@ -39,7 +47,15 @@
       "cli_asset_regex": "^morphe-desktop-[^/]+-all\\.jar$",
       "channel": "prerelease",
       "scheduled": false,
-      "apps": ["twitter"]
+      "apps": ["twitter"],
+      "compatibility": {
+        "app": "twitter",
+        "current_supported_version": "12.7.1-release.0",
+        "patch_mode": "single-mpp",
+        "minimum_no_shim_version": "12.5.0-release.0",
+        "shim": "not-used",
+        "notes": "Current Piko development releases use the normal Piko MPP only; do not add undocumented multi-bundle CLI flags."
+      }
     },
     "de-revanced": {
       "name": "De-ReVanced",

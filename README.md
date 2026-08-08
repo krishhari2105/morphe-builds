@@ -19,11 +19,21 @@ APKMirror has no supported download API and can block GitHub-hosted runners. Whe
 
 ## One-click build
 
-1. Open **Actions → Build patched apps → Run workflow**.
-2. Choose the patch source from the `patch_sources` dropdown.
-3. Choose `all` or one app from the `apps` dropdown.
-4. Normally leave `version_overrides` and `base_urls` as `{}`.
-5. Run the workflow.
+Use the source-specific workflow shown under **Actions**:
+
+| Workflow | App choices |
+|---|---|
+| Build Morphe apps | all, YouTube, YouTube Music, Reddit |
+| Build Morphe development apps | all, YouTube, YouTube Music, Reddit |
+| Build Piko X | all, X/Twitter |
+| Build Piko development X | all, X/Twitter |
+| Build De-ReVanced Google Photos | all, Google Photos |
+| Build hoo-dles Proton VPN | all, Proton VPN |
+
+1. Open the appropriate workflow and click **Run workflow**.
+2. Choose `all` or one app from that workflow’s dropdown.
+3. Normally leave `version_overrides` and `base_urls` as `{}`.
+4. Run the workflow.
 
 Supported app keys are `youtube`, `yt-music`, `reddit`, `twitter`, `spotify`, `gphotos`, and `proton-vpn`. Supported source keys are defined in [`config/patch-sources.json`](config/patch-sources.json).
 

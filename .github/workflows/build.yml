@@ -1,51 +1,6 @@
 name: Build patched apps
 
 on:
-  workflow_dispatch:
-    inputs:
-      patch_sources:
-        description: "Patch source"
-        required: true
-        default: "morphe"
-        type: choice
-        options:
-          - morphe
-          - morphe-dev
-          - piko
-          - piko-dev
-          - de-revanced
-          - hoo-dles
-          - scheduled
-          - all
-      apps:
-        description: "App to patch"
-        required: true
-        default: "all"
-        type: choice
-        options:
-          - all
-          - youtube
-          - yt-music
-          - reddit
-          - twitter
-          - spotify
-          - gphotos
-          - proton-vpn
-      version_overrides:
-        description: "Per-app versions as JSON, for example {\"youtube\":\"20.12.46\"}"
-        required: false
-        default: "{}"
-        type: string
-      base_urls:
-        description: "Manual per-app direct download URLs as JSON (fallback when APKMirror blocks Actions)"
-        required: false
-        default: "{}"
-        type: string
-      publish:
-        description: "Publish a GitHub Release"
-        required: true
-        default: true
-        type: boolean
   workflow_call:
     inputs:
       patch_sources:

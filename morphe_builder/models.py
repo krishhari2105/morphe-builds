@@ -28,6 +28,7 @@ class SourceConfig:
     channel: str
     scheduled: bool
     apps: tuple[str, ...]
+    compatibility: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
