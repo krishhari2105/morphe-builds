@@ -12,6 +12,7 @@ from .acquisition import (
     AcquisitionError,
     BaseCache,
     download_apkmirror_candidates,
+    download_apkmirror_latest_candidates,
     download_manual,
     rename_detected,
 )
@@ -24,7 +25,7 @@ from .http import HttpClient
 from .manifest import build_tag, sha256_file, slug, write_checksums, write_manifest
 from .models import AppBuildResult, AppConfig, SourceConfig
 from .patching import ResolvedTools, list_versions, patch_unsigned, prepare_keystore, resolve_tools
-from .versions import normalize_version
+from .versions import normalize_version, version_key
 
 
 class PipelineError(RuntimeError):
@@ -346,6 +347,67 @@ class Builder:
                 temp_path.unlink(missing_ok=True)
 
         for candidate in candidate_versions:
+            if candidate is None:
+                try:
+                    downloads = download_apkmirror_latest_candidates(
+                        self.http, self.apkmirror, app, app_work_dir / "latest-variants"
+                    )
+                    latest_errors: list[str] = []
+                    for result, source_page, resolved_version in downloads:
+                        try:
+                            detected_path = rename_detected(result.path)
+                            info, native_abis, strip = inspect_source(
+                                detected_path,
+                                self.android,
+                                expected_package=app.package,
+                                expected_version=resolved_version,
+                                target_abi=app.target_abi,
+                            )
+                            cached = self.cache.store(
+                                app,
+                                detected_path,
+                                version_name=info.version_name,
+                                version_code=info.version_code,
+                                source_page=source_page,
+                                final_url=result.final_url,
+                                requested_version="Any",
+                                resolution_mode="latest",
+                            )
+                            return cached.path, info, native_abis, strip, {
+                                "acquisition": "apkmirror-latest",
+                                "source_page": source_page,
+                                "final_url": result.final_url,
+                                "requested_version": "Any",
+                                "resolved_version": info.version_name,
+                            }
+                        except Exception as exc:
+                            latest_errors.append(str(exc))
+                            result.path.unlink(missing_ok=True)
+                    errors.append(f"apkmirror latest: {'; '.join(latest_errors[:4])}")
+                except Exception as exc:
+                    errors.append(f"apkmirror latest: {exc}")
+
+                cached = self.cache.find_latest(app)
+                if cached:
+                    try:
+                        info, native_abis, strip = inspect_source(
+                            cached.path,
+                            self.android,
+                            expected_package=app.package,
+                            expected_version=cached.version_name,
+                            target_abi=app.target_abi,
+                        )
+                        return cached.path, info, native_abis, strip, {
+                            "acquisition": "actions-cache-latest-fallback",
+                            "source_page": cached.source_page,
+                            "final_url": cached.final_url,
+                            "requested_version": "Any",
+                            "resolved_version": info.version_name,
+                        }
+                    except Exception as exc:
+                        errors.append(f"cache latest fallback: {exc}")
+                continue
+
             cached = self.cache.find(app, candidate)
             if cached:
                 try:
@@ -412,10 +474,10 @@ class Builder:
     def _candidate_versions(app: AppConfig, compatible: list[str], override: str | None) -> list[str | None]:
         if override and override.lower() != "auto":
             return [normalize_version(override)]
-        numeric = [normalize_version(value) for value in compatible if value != "Any"]
+        numeric = {normalize_version(value) for value in compatible if value.lower() != "any"}
         if numeric:
-            return numeric
-        if "Any" in compatible:
+            return sorted(numeric, key=version_key, reverse=True)
+        if any(value.lower() == "any" for value in compatible):
             return [None]
         raise PipelineError(f"{app.name} is not compatible with the selected patch source")
 

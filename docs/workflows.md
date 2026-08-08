@@ -2,12 +2,21 @@
 
 ## Build patched apps
 
-`build.yml` supports manual dispatch, reusable workflow calls, and a validated `repository_dispatch` source hint.
+`build.yml` is the reusable implementation workflow. Manual runs use source-specific wrappers so GitHub can display valid app choices for each source:
 
-Inputs:
+- `build-morphe.yml`: YouTube, YouTube Music, Reddit.
+- `build-morphe-dev.yml`: YouTube, YouTube Music, Reddit.
+- `build-piko.yml`: X/Twitter only.
+- `build-piko-dev.yml`: X/Twitter only.
+- `build-de-revanced.yml`: Google Photos only.
+- `build-hoo-dles.yml`: Proton VPN only.
 
-- `patch_sources`: a dropdown containing each configured source, `scheduled`, or `all`.
-- `apps`: a dropdown containing `all` and each supported app. Manual dispatch intentionally selects one app at a time; scheduled builds still use `all`.
+Each wrapper offers `all` plus its permitted app choices, then calls `build.yml` with a fixed source. This avoids invalid source/app combinations that cannot be represented by dependent GitHub Actions dropdowns.
+
+The reusable inputs are:
+
+- `patch_sources`: fixed by manual wrappers; used by scheduled/repository-dispatch callers.
+- `apps`: `all` or a source-permitted app key.
 - `version_overrides`: JSON object mapping app keys to exact versions.
 - `base_urls`: JSON object mapping app keys to direct HTTPS downloads.
 - `publish`: create/reuse a deterministic GitHub Release when true.
@@ -24,11 +33,17 @@ GitHub scheduled workflows can be delayed. Upstream repositories cannot directly
 
 ## Base acquisition order
 
-For each compatible version:
+The resolved patch MPP is queried with `list-versions`; those concrete compatible versions are normalized and attempted newest-first. An explicit `version_overrides` value is treated as one exact request and is never silently replaced by another version.
 
-1. Validated Actions cache.
-2. An explicit manual URL, when supplied.
-3. APKMirror best-effort HTML discovery.
+When the patch source reports `Any`, the builder means “newest valid release,” not an arbitrary APK:
+
+1. APKMirror stable release pages are ordered newest-first; prerelease pages are skipped.
+2. Each release's preferred variants are downloaded and validated for package, resolved version, archive integrity, and arm64 support.
+3. If the newest release or its variants fail, the next stable release is tried.
+4. Only after network candidates fail, the newest valid Actions-cache entry is used.
+5. A manual HTTPS URL is accepted after the same package/archive/ABI validation; with `Any`, its concrete version is recorded as the resolved version.
+
+Build manifests and cache manifests record `requested_version`, `resolved_version`, and `resolution_mode` so the selected base can be audited.
 
 The active workflow has no dependency on the old private `base-apks` repository.
 

@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlsplit
 
 from .http import HttpClient
 from .models import AppConfig
+from .versions import version_key
 
 
 class ApkMirrorError(RuntimeError):
@@ -102,26 +103,41 @@ class ApkMirrorResolver:
                 result.append(Link(absolute, link.text, link.element_id, link.title))
         return result
 
-    def resolve_latest(self, app: AppConfig) -> tuple[str, str, str]:
+    def resolve_latest_candidates(self, app: AppConfig) -> list[tuple[str, str, str]]:
         listing_html, listing_url = self._html(app.apkmirror_url)
-        release_links = [
-            link
-            for link in self._links(listing_html, listing_url)
-            if "/apk/" in link.href and "release" in link.href.lower()
-        ]
-        for link in release_links:
+        release_candidates: list[tuple[str, Link]] = []
+        seen: set[str] = set()
+        for link in self._links(listing_html, listing_url):
+            if "/apk/" not in link.href or "release" not in link.href.lower() or link.href in seen:
+                continue
             haystack = " ".join(filter(None, [link.text, link.title, link.href]))
-            if " beta" in haystack.lower():
+            lower = haystack.lower()
+            if any(marker in lower for marker in (" beta", " alpha", " rc", "-beta", "-alpha", "-rc")):
                 continue
             match = re.search(r"(?<!\d)(\d+(?:\.\d+)+(?:[-._A-Za-z0-9]+)?)", haystack)
             if not match:
                 continue
-            version = match.group(1).rstrip("-._")
-            candidates = self._resolve_from_release(app, version, link, listing_url)
-            if candidates:
-                direct, source_page = candidates[0]
-                return direct, source_page, version
-        raise ApkMirrorError(f"Could not determine the latest APKMirror version for {app.name}")
+            seen.add(link.href)
+            release_candidates.append((match.group(1).rstrip("-._"), link))
+
+        release_candidates.sort(key=lambda item: version_key(item[0]), reverse=True)
+        errors: list[str] = []
+        all_candidates: list[tuple[str, str, str]] = []
+        for version, link in release_candidates:
+            try:
+                resolved = self._resolve_from_release(app, version, link, listing_url)
+            except ApkMirrorError as exc:
+                errors.append(f"{version}: {exc}")
+                continue
+            all_candidates.extend((direct, page, version) for direct, page in resolved)
+        if all_candidates:
+            return all_candidates
+        detail = f" ({'; '.join(errors[:3])})" if errors else ""
+        raise ApkMirrorError(f"Could not determine the latest APKMirror version for {app.name}{detail}")
+
+    def resolve_latest(self, app: AppConfig) -> tuple[str, str, str]:
+        candidates = self.resolve_latest_candidates(app)
+        return candidates[0]
 
     def resolve(self, app: AppConfig, version: str) -> tuple[str, str]:
         listing_html, listing_url = self._html(app.apkmirror_url)
