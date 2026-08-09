@@ -34,6 +34,7 @@ jobs:
       matrix:
         source: ${{ fromJSON(needs.check.outputs.sources) }}
     permissions:
+      actions: write
       contents: write
     uses: ./.github/workflows/build.yml
     with:

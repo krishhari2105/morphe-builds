@@ -9,7 +9,7 @@ One repository for discovering compatible app versions, acquiring source APK/APK
 - Exact Morphe patch and CLI release/asset resolution with SHA-256 verification.
 - Compatible-version discovery through `morphe-desktop list-versions`.
 - Best-effort APKMirror release and arm64/universal variant discovery.
-- Actions cache reuse for validated base files. Raw bases are never public release assets.
+- Source-isolated Actions caches for tools and validated base files, retaining two generations each. Raw bases are never public release assets.
 - Direct APKM/APKS/XAPK input to Morphe CLI. Source files are not rewritten.
 - `--striplibs=arm64-v8a` only when the source contains arm64 plus other native architectures; arm64-only and architecture-independent sources are left alone.
 - APK package/version/ABI, alignment, and signing-certificate validation.

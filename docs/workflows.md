@@ -54,7 +54,7 @@ Build manifests and cache manifests record `requested_version`, `resolved_versio
 
 The active workflow has no dependency on the old private `base-apks` repository.
 
-After validation, the original source file is copied into the Actions cache. It is not uploaded to a public release.
+After validation, the original source file is copied into a source-scoped Actions cache. Tools and bases use separate immutable cache generations, and only the newest two generations per source/type are retained. Failed preparation jobs do not save a new generation. Raw bases are not uploaded to a public release.
 
 ## Morphe source handling
 
