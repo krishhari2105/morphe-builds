@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from morphe_builder.apkmirror import ApkMirrorResolver, Link, _challenge
+from morphe_builder.apkmirror import ApkMirrorRateLimited, ApkMirrorResolver, Link, _challenge
 from morphe_builder.config import load_config
 
 
@@ -98,12 +98,23 @@ class ApkMirrorTests(unittest.TestCase):
         session = SimpleNamespace(get=lambda *args, **kwargs: responses.pop(0))
         resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
         resolver.http = SimpleNamespace(session=session, timeout=(20, 120))
+        resolver.min_request_interval = 0
+        resolver._last_request_at = None
         self.assertEqual(
             resolver._follow_download_pages(
                 "https://www.apkmirror.com/start/", "https://www.apkmirror.com/variant/"
             ),
             "https://download.apkmirror.com/final.apk",
         )
+
+    def test_rate_limit_stops_variant_iteration(self):
+        app = load_config().apps["gphotos"]
+        resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
+        resolver._html = lambda url, referer=None: (_ for _ in ()).throw(ApkMirrorRateLimited("120"))
+        release = Link("https://www.apkmirror.com/release/", "Google Photos")
+        with self.assertRaises(ApkMirrorRateLimited) as raised:
+            resolver._resolve_from_release(app, "latest", release, app.apkmirror_url)
+        self.assertEqual(raised.exception.retry_after, "120")
 
     def test_detects_challenge_pages(self):
         self.assertTrue(_challenge("<html><title>Just a moment...</title><div class='cf-chl-test'>"))

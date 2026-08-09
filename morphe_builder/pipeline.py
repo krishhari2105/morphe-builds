@@ -17,7 +17,7 @@ from .acquisition import (
     rename_detected,
 )
 from .android import AndroidTools
-from .apkmirror import ApkMirrorResolver
+from .apkmirror import ApkMirrorRateLimited, ApkMirrorResolver
 from .bundles import inspect_source
 from .config import Config
 from .github import GitHubClient
@@ -348,6 +348,7 @@ class Builder:
 
         for candidate in candidate_versions:
             if candidate is None:
+                rate_limit_error: ApkMirrorRateLimited | None = None
                 try:
                     downloads = download_apkmirror_latest_candidates(
                         self.http, self.apkmirror, app, app_work_dir / "latest-variants"
@@ -384,6 +385,9 @@ class Builder:
                             latest_errors.append(str(exc))
                             result.path.unlink(missing_ok=True)
                     errors.append(f"apkmirror latest: {'; '.join(latest_errors[:4])}")
+                except ApkMirrorRateLimited as exc:
+                    rate_limit_error = exc
+                    errors.append(f"apkmirror latest: {exc}")
                 except Exception as exc:
                     errors.append(f"apkmirror latest: {exc}")
 
@@ -406,6 +410,8 @@ class Builder:
                         }
                     except Exception as exc:
                         errors.append(f"cache latest fallback: {exc}")
+                if rate_limit_error:
+                    raise AcquisitionError(str(rate_limit_error)) from rate_limit_error
                 continue
 
             cached = self.cache.find(app, candidate)
@@ -460,6 +466,8 @@ class Builder:
                             variant_errors.append(str(exc))
                             result.path.unlink(missing_ok=True)
                     errors.append(f"{method} {candidate or 'latest'}: { '; '.join(variant_errors[:4]) }")
+                except ApkMirrorRateLimited as exc:
+                    raise AcquisitionError(str(exc)) from exc
                 except Exception as exc:
                     errors.append(f"{method} {candidate or 'latest'}: {exc}")
                 temp_path.unlink(missing_ok=True)

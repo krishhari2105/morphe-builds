@@ -36,7 +36,7 @@ class HttpClient:
             read=2,
             status=3,
             backoff_factor=1,
-            status_forcelist=(429, 500, 502, 503, 504),
+            status_forcelist=(500, 502, 503, 504),
             allowed_methods=frozenset({"GET", "HEAD"}),
             respect_retry_after_header=True,
         )

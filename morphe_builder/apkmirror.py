@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
@@ -12,6 +13,13 @@ from .versions import version_key
 
 class ApkMirrorError(RuntimeError):
     pass
+
+
+class ApkMirrorRateLimited(ApkMirrorError):
+    def __init__(self, retry_after: str | None = None) -> None:
+        self.retry_after = retry_after
+        detail = f"; retry after {retry_after}" if retry_after else ""
+        super().__init__(f"APKMirror rate limited the request with HTTP 429{detail}")
 
 
 @dataclass(frozen=True)
@@ -68,11 +76,13 @@ def _slug_version(version: str) -> list[str]:
 
 
 class ApkMirrorResolver:
-    def __init__(self, http: HttpClient | None = None) -> None:
+    def __init__(self, http: HttpClient | None = None, min_request_interval: float = 1.0) -> None:
         self.http = http or HttpClient(user_agent=(
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
         ))
+        self.min_request_interval = max(0.0, min_request_interval)
+        self._last_request_at: float | None = None
         self.http.session.headers.update(
             {
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -80,11 +90,24 @@ class ApkMirrorResolver:
             }
         )
 
+    def _pace_request(self) -> None:
+        now = time.monotonic()
+        last_request_at = getattr(self, "_last_request_at", None)
+        min_request_interval = getattr(self, "min_request_interval", 1.0)
+        if last_request_at is not None:
+            remaining = min_request_interval - (now - last_request_at)
+            if remaining > 0:
+                time.sleep(remaining)
+        self._last_request_at = time.monotonic()
+
     def _html(self, url: str, referer: str | None = None) -> tuple[str, str]:
         headers = {"Referer": referer} if referer else None
+        self._pace_request()
         response = self.http.session.get(url, headers=headers, timeout=self.http.timeout)
-        if response.status_code in {403, 429}:
-            raise ApkMirrorError(f"APKMirror blocked the request with HTTP {response.status_code}")
+        if response.status_code == 429:
+            raise ApkMirrorRateLimited(response.headers.get("Retry-After"))
+        if response.status_code == 403:
+            raise ApkMirrorError("APKMirror blocked the request with HTTP 403")
         response.raise_for_status()
         html = response.text
         if _challenge(html):
@@ -133,6 +156,8 @@ class ApkMirrorResolver:
         for version, link in release_candidates:
             try:
                 resolved = self._resolve_from_release(app, version, link, listing_url)
+            except ApkMirrorRateLimited:
+                raise
             except ApkMirrorError as exc:
                 errors.append(f"{version}: {exc}")
                 continue
@@ -191,6 +216,8 @@ class ApkMirrorResolver:
             release_link = Link(release_url, f"{app.name} {version}")
             try:
                 return self._resolve_from_release(app, version, release_link, listing_url)
+            except ApkMirrorRateLimited:
+                raise
             except Exception as exc:
                 errors.append(f"{release_url}: {exc}")
         detail = f": {'; '.join(errors[:3])}" if errors else ""
@@ -251,6 +278,8 @@ class ApkMirrorResolver:
                 final_url = self._follow_download_pages(direct.href, download_page_url)
                 if final_url not in {item[0] for item in resolved}:
                     resolved.append((final_url, variant.href))
+            except ApkMirrorRateLimited:
+                raise
             except ApkMirrorError as exc:
                 errors.append(f"{variant.text or variant.href}: {exc}")
         if not resolved:
@@ -266,6 +295,7 @@ class ApkMirrorResolver:
             if current_url in seen:
                 raise ApkMirrorError("APKMirror download flow entered a redirect/page loop")
             seen.add(current_url)
+            self._pace_request()
             response = self.http.session.get(
                 current_url,
                 headers={"Referer": current_referer},
@@ -273,9 +303,13 @@ class ApkMirrorResolver:
                 allow_redirects=True,
                 timeout=self.http.timeout,
             )
-            if response.status_code in {403, 429}:
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
                 response.close()
-                raise ApkMirrorError(f"APKMirror blocked the download flow with HTTP {response.status_code}")
+                raise ApkMirrorRateLimited(retry_after)
+            if response.status_code == 403:
+                response.close()
+                raise ApkMirrorError("APKMirror blocked the download flow with HTTP 403")
             response.raise_for_status()
             content_type = response.headers.get("Content-Type", "").lower()
             if "html" not in content_type:

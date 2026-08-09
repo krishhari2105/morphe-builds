@@ -6,8 +6,8 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from .apkmirror import ApkMirrorResolver
-from .http import HttpClient
+from .apkmirror import ApkMirrorRateLimited, ApkMirrorResolver
+from .http import DownloadError, HttpClient
 from .manifest import sha256_file, slug
 from .models import AppConfig, DownloadResult
 from .versions import version_key
@@ -176,6 +176,13 @@ def download_apkmirror_latest_candidates(
                 extra_headers={"Referer": source_page},
             )
             results.append((result, source_page, version))
+        except ApkMirrorRateLimited:
+            destination.unlink(missing_ok=True)
+            raise
+        except DownloadError as exc:
+            destination.unlink(missing_ok=True)
+            if "429" in str(exc):
+                raise ApkMirrorRateLimited() from exc
         except Exception:
             destination.unlink(missing_ok=True)
     if not results:
@@ -203,6 +210,13 @@ def download_apkmirror_candidates(
                 extra_headers={"Referer": source_page},
             )
             results.append((result, source_page, version))
+        except ApkMirrorRateLimited:
+            destination.unlink(missing_ok=True)
+            raise
+        except DownloadError as exc:
+            destination.unlink(missing_ok=True)
+            if "429" in str(exc):
+                raise ApkMirrorRateLimited() from exc
         except Exception:
             destination.unlink(missing_ok=True)
     if not results:
