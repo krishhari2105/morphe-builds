@@ -32,14 +32,17 @@ Use the source-specific workflow shown under **Actions**:
 
 1. Open the appropriate workflow and click **Run workflow**.
 2. Choose `all` or one app from that workflow’s dropdown.
-3. Normally leave `version_overrides` and `base_urls` as `{}`.
-4. Run the workflow.
+3. Normally leave `version_overrides` and `base_urls` as `{}` and `base_url` empty.
+4. If APKMirror fails, select one app and paste its direct URL into `base_url`—no JSON is needed.
+5. Run the workflow.
 
 Supported app keys are `youtube`, `yt-music`, `reddit`, `twitter`, `spotify`, `gphotos`, and `proton-vpn`. Supported source keys are defined in [`config/patch-sources.json`](config/patch-sources.json).
 
 ### Manual APKMirror fallback
 
-If Actions reports that APKMirror blocked or changed its page, copy the final APKMirror download link and rerun with:
+If Actions reports that APKMirror blocked or changed its page, choose a single app and paste the final APKMirror download link directly into the `base_url` field. Single-app workflows such as Google Photos, X, and Proton VPN can keep `apps` set to `all`.
+
+For a multi-app run, use the advanced `base_urls` JSON field:
 
 ```json
 {

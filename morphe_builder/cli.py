@@ -56,6 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--apps", default="all")
     prepare.add_argument("--version-overrides", default="{}")
     prepare.add_argument("--base-urls", default="{}")
+    prepare.add_argument("--base-url", default="")
 
     finalize = subparsers.add_parser("finalize", help="Sign, verify, and optionally publish prepared APKs")
     finalize.add_argument("--source", required=True)
@@ -124,6 +125,7 @@ def main(argv: list[str] | None = None) -> int:
                 _csv(args.apps),
                 versions,
                 base_urls,
+                args.base_url or None,
             )
             print(json.dumps({"source": state["source"], "apps": state["apps"]}, indent=2))
             return 0

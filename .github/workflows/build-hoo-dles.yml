@@ -14,8 +14,13 @@ on:
         required: false
         default: "{}"
         type: string
+      base_url:
+        description: "Optional direct URL for the selected app"
+        required: false
+        default: ""
+        type: string
       base_urls:
-        description: "Optional APKMirror direct URLs as JSON"
+        description: "Advanced: direct URLs as JSON"
         required: false
         default: "{}"
         type: string
@@ -35,6 +40,7 @@ jobs:
       patch_sources: hoo-dles
       apps: ${{ inputs.apps }}
       version_overrides: ${{ inputs.version_overrides }}
+      base_url: ${{ inputs.base_url }}
       base_urls: ${{ inputs.base_urls }}
       publish: ${{ inputs.publish }}
     secrets: inherit

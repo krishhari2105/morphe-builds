@@ -18,6 +18,10 @@ on:
         required: false
         default: "{}"
         type: string
+      base_url:
+        required: false
+        default: ""
+        type: string
       publish:
         required: false
         default: true
@@ -91,12 +95,14 @@ jobs:
           APPS: ${{ inputs.apps || 'all' }}
           VERSION_OVERRIDES: ${{ inputs.version_overrides || '{}' }}
           BASE_URLS: ${{ inputs.base_urls || '{}' }}
+          BASE_URL: ${{ inputs.base_url || '' }}
         run: |
           python -m morphe_builder prepare \
             --source "${{ matrix.source }}" \
             --apps "$APPS" \
             --version-overrides "$VERSION_OVERRIDES" \
-            --base-urls "$BASE_URLS"
+            --base-urls "$BASE_URLS" \
+            --base-url "$BASE_URL"
       - name: Upload prepared unsigned build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

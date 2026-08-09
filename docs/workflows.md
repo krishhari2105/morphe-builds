@@ -18,7 +18,8 @@ The reusable inputs are:
 - `patch_sources`: fixed by manual wrappers; used by scheduled/repository-dispatch callers.
 - `apps`: `all` or a source-permitted app key.
 - `version_overrides`: JSON object mapping app keys to exact versions.
-- `base_urls`: JSON object mapping app keys to direct HTTPS downloads.
+- `base_url`: one direct HTTPS download for the selected app; the app key is inferred automatically.
+- `base_urls`: advanced JSON object mapping multiple app keys to direct HTTPS downloads.
 - `publish`: create/reuse a deterministic GitHub Release when true.
 
 Each source runs independently. Within one source, publishing is all-or-nothing: a failed requested app prevents a partial release. Diagnostic manifests and any successful local outputs are retained as a 14-day workflow artifact.

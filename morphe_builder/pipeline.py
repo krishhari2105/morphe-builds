@@ -47,11 +47,13 @@ class Builder:
         apps: list[str],
         version_overrides: dict[str, str],
         base_urls: dict[str, str],
+        base_url: str | None = None,
     ) -> dict[str, Any]:
         if source_key not in self.config.sources:
             raise PipelineError(f"Unknown patch source: {source_key}")
         source = self.config.sources[source_key]
         selected_apps = self._select_apps(source, apps)
+        base_urls = self._merge_base_url(selected_apps, base_urls, base_url)
 
         work_dir = Path(".work") / source_key
         staging_dir = Path("staging") / source_key
@@ -479,6 +481,20 @@ class Builder:
             f"Could not acquire a validated base for {app.key}. {detail}. "
             f"Rerun with base_urls JSON such as {{\"{app.key}\": \"https://...\"}}"
         )
+
+    @staticmethod
+    def _merge_base_url(
+        selected_apps: list[str],
+        base_urls: dict[str, str],
+        base_url: str | None,
+    ) -> dict[str, str]:
+        if not base_url:
+            return base_urls
+        if len(selected_apps) != 1:
+            raise PipelineError(
+                "A single base URL requires exactly one selected app; choose one app or use base_urls JSON"
+            )
+        return {selected_apps[0]: base_url, **base_urls}
 
     @staticmethod
     def _candidate_versions(app: AppConfig, compatible: list[str], override: str | None) -> list[str | None]:

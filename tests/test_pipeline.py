@@ -46,6 +46,28 @@ class PipelineTests(unittest.TestCase):
                 [app for app in self.config.apps if app in apps],
             )
 
+    def test_single_base_url_is_inferred_for_one_app(self):
+        self.assertEqual(
+            self.builder._merge_base_url(["gphotos"], {}, "https://example.com/photos.apk"),
+            {"gphotos": "https://example.com/photos.apk"},
+        )
+
+    def test_base_urls_json_overrides_single_url(self):
+        self.assertEqual(
+            self.builder._merge_base_url(
+                ["yt-music"],
+                {"yt-music": "https://example.com/explicit.apk"},
+                "https://example.com/simple.apk",
+            ),
+            {"yt-music": "https://example.com/explicit.apk"},
+        )
+
+    def test_single_base_url_rejects_multiple_apps(self):
+        with self.assertRaisesRegex(PipelineError, "exactly one selected app"):
+            self.builder._merge_base_url(
+                ["youtube", "yt-music", "reddit"], {}, "https://example.com/base.apk"
+            )
+
     def test_incompatible_source_app_is_rejected(self):
         with self.assertRaisesRegex(PipelineError, "not configured"):
             self.builder._select_apps(self.config.sources["piko"], ["youtube"])
