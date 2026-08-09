@@ -295,12 +295,14 @@ class Builder:
         self._write_step_summary(source, finalized_results, tag, {})
 
         if publish:
-            self.github.publish_release(
+            release = self.github.publish_release(
                 tag,
                 f"{source.name}: {state['patch_release']['tag']}",
                 self._release_body(source, state, finalized_results),
                 outputs + [manifest_path, checksums_path],
             )
+            if source_key in {"morphe", "morphe-dev"}:
+                self.github.prune_build_releases(source_key, release, self.config.sources)
         return manifest
 
     def _acquire_base(

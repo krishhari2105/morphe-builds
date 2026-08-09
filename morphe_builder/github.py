@@ -124,6 +124,35 @@ class GitHubClient:
             raise
         return self._release(target_repo, raw)
 
+    def delete_release(self, release: ReleaseInfo) -> None:
+        self.http.request_json(
+            "DELETE",
+            f"{API}/repos/{release.repo}/releases/{release.id}",
+            github=True,
+        )
+
+    def prune_build_releases(
+        self,
+        source: str,
+        current: ReleaseInfo,
+        source_keys: Iterable[str],
+    ) -> list[ReleaseInfo]:
+        releases = self.list_releases(current.repo, max_pages=10)
+        ordered_sources = sorted(source_keys, key=len, reverse=True)
+        deleted: list[ReleaseInfo] = []
+        for release in releases:
+            if release.id == current.id or release.draft:
+                continue
+            release_source = next(
+                (key for key in ordered_sources if release.tag.startswith(f"build-{key}-")),
+                None,
+            )
+            if release_source != source:
+                continue
+            self.delete_release(release)
+            deleted.append(release)
+        return deleted
+
     def create_release(self, tag: str, name: str, body: str, repo: str | None = None) -> ReleaseInfo:
         target_repo = repo or self.repository
         if not target_repo:
