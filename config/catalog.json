@@ -32,7 +32,8 @@
       "description": "The latest patched Spotify build."
     },
     "gphotos": {
-      "visible": false,
+      "visible": true,
+      "preferred_sources": ["de-revanced"],
       "tagline": "A more flexible Google Photos experience",
       "description": "The latest patched Google Photos build."
     },
