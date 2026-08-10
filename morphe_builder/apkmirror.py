@@ -283,22 +283,45 @@ class ApkMirrorResolver:
         listing_url: str,
     ) -> Iterator[tuple[str, str]]:
         release_html, release_url = self._html(release_link.href, listing_url)
-        candidates = [
-            link
-            for link in self._links(release_html, release_url)
-            if "android-apk-download" in link.href.lower()
-        ]
-        if not candidates:
+        release_path = urlsplit(release_url).path.rstrip("/") + "/"
+        pending: dict[str, Link] = {}
+
+        def add_candidate(link: Link) -> None:
+            link_path = urlsplit(link.href).path
+            if "android-apk-download" not in link_path.lower() or not link_path.startswith(release_path):
+                return
+            key = self._variant_url_key(link.href)
+            if key in visited:
+                return
+            existing = pending.get(key)
+            pending[key] = self._merge_variant_links(existing, link) if existing else link
+
+        visited: set[str] = set()
+        for link in self._links(release_html, release_url):
+            add_candidate(link)
+        if not pending:
             raise ApkMirrorError(f"No downloadable variants found for {app.name} {version}")
-        candidates.sort(key=lambda link: self._variant_score(link, app), reverse=True)
-        candidates = [candidate for candidate in candidates if self._variant_score(candidate, app) >= 0]
         variant_limit = getattr(self, "max_variant_attempts", 3)
         errors: list[str] = []
         yielded_any = False
-        for variant in candidates[:variant_limit]:
+        while pending and len(visited) < variant_limit:
+            key = max(pending, key=lambda item: self._variant_score(pending[item], app))
+            variant = pending.pop(key)
+            if self._variant_score(variant, app) < 0:
+                continue
+            visited.add(key)
             try:
                 download_html, download_page_url = self._html(variant.href, release_url)
                 download_links = self._links(download_html, download_page_url)
+                current_variant = variant
+                for alternate in download_links:
+                    alternate_key = self._variant_url_key(alternate.href)
+                    if alternate_key == key:
+                        current_variant = self._merge_variant_links(current_variant, alternate)
+                    add_candidate(alternate)
+                if self._variant_score(current_variant, app) < 0:
+                    errors.append(f"{current_variant.text or variant.href}: incompatible architecture")
+                    continue
                 direct = next((link for link in download_links if link.element_id == "download-link"), None)
                 if direct is None:
                     direct = next(
@@ -320,6 +343,22 @@ class ApkMirrorResolver:
         if not yielded_any:
             detail = "; ".join(errors[:3])
             raise ApkMirrorError(f"No usable APKMirror variants: {detail}")
+
+    @staticmethod
+    def _variant_url_key(url: str) -> str:
+        parts = urlsplit(url)
+        return f"{parts.scheme.lower()}://{parts.netloc.lower()}{parts.path.rstrip('/')}"
+
+    @staticmethod
+    def _merge_variant_links(first: Link, second: Link) -> Link:
+        texts = list(dict.fromkeys(value for value in (first.text, second.text) if value))
+        titles = list(dict.fromkeys(value for value in (first.title, second.title) if value))
+        return Link(
+            href=first.href,
+            text=" ".join(texts),
+            element_id=first.element_id or second.element_id,
+            title=" ".join(titles) or None,
+        )
 
     def download_candidate(self, url: str, referer: str, destination: Path) -> DownloadResult:
         return self.http.download(
@@ -373,6 +412,6 @@ class ApkMirrorResolver:
             score += 15
         if "nodpi" in haystack:
             score += 5
-        if any(abi in haystack for abi in ("x86", "armeabi-v7a", "armeabi")) and "arm64" not in haystack:
+        if any(abi in haystack for abi in ("x86", "arm-v7a", "armeabi-v7a", "armeabi")) and "arm64" not in haystack:
             score -= 200
         return score

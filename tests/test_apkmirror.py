@@ -86,7 +86,7 @@ class ApkMirrorTests(unittest.TestCase):
         resolver.max_variant_attempts = 3
         release = Link("https://www.apkmirror.com/release/", "Google Photos")
         variant_links = "".join(
-            f'<a href="https://www.apkmirror.com/variant-{index}-android-apk-download/">arm64-v8a</a>'
+            f'<a href="{release.href}variant-{index}-android-apk-download/">arm64-v8a</a>'
             for index in range(6)
         )
         visited = []
@@ -102,6 +102,49 @@ class ApkMirrorTests(unittest.TestCase):
         candidates = resolver._resolve_from_release(app, "latest", release, app.apkmirror_url)
         self.assertEqual(len(candidates), 3)
         self.assertEqual(len(visited), 4)
+
+    def test_duplicate_unlabelled_variants_discover_arm64_before_download(self):
+        app = load_config().apps["yt-music"]
+        resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
+        resolver.max_variant_attempts = 3
+        release = Link(
+            "https://www.apkmirror.com/apk/google-inc/youtube-music/"
+            "youtube-music-9-15-51-release/",
+            "YouTube Music 9.15.51",
+        )
+        armv7 = release.href + "youtube-music-9-15-51-7-android-apk-download/"
+        arm64 = release.href + "youtube-music-9-15-51-4-android-apk-download/"
+        release_html = (
+            f'<a href="{armv7}">9.15.51</a>'
+            f'<a href="{armv7}"></a>'
+            f'<a href="{armv7}">9.15.51</a>'
+            f'<a href="{arm64}">9.15.51</a>'
+        )
+        armv7_page = (
+            f'<a href="{armv7}">(arm-v7a) (nodpi) (Android 8.0+) APK</a>'
+            f'<a href="{arm64}">(arm64-v8a) (nodpi) (Android 8.0+) APK</a>'
+            '<a id="download-link" href="https://download.apkmirror.com/armv7.apk">Download</a>'
+        )
+        arm64_page = (
+            f'<a href="{arm64}">(arm64-v8a) (nodpi) (Android 8.0+) APK</a>'
+            '<a id="download-link" href="https://download.apkmirror.com/arm64.apk">Download</a>'
+        )
+        visited = []
+
+        def html(url, referer=None):
+            visited.append(url)
+            if url == release.href:
+                return release_html, url
+            if url == armv7:
+                return armv7_page, url
+            if url == arm64:
+                return arm64_page, url
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        resolver._html = html
+        candidates = resolver._resolve_from_release(app, "9.15.51", release, app.apkmirror_url)
+        self.assertEqual(candidates, [("https://download.apkmirror.com/arm64.apk", arm64)])
+        self.assertEqual(visited, [release.href, armv7, arm64])
 
     def test_download_flow_does_not_probe_terminal_binary_twice(self):
         class Response:
