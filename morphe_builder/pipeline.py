@@ -37,7 +37,7 @@ class Builder:
         self.config = config
         self.github = github or GitHubClient()
         self.http = HttpClient()
-        self.apkmirror = ApkMirrorResolver(self.http)
+        self.apkmirror = ApkMirrorResolver()
         self.android = AndroidTools(config.tools.android_build_tools)
         self.cache = BaseCache(Path(os.environ.get("BASE_CACHE_DIR", ".cache/bases")))
 
@@ -355,7 +355,7 @@ class Builder:
                 rate_limit_error: ApkMirrorRateLimited | None = None
                 try:
                     downloads = download_apkmirror_latest_candidates(
-                        self.http, self.apkmirror, app, app_work_dir / "latest-variants"
+                        self.apkmirror, app, app_work_dir / "latest-variants"
                     )
                     latest_errors: list[str] = []
                     for result, source_page, resolved_version in downloads:
@@ -442,7 +442,7 @@ class Builder:
                 temp_path.unlink(missing_ok=True)
                 try:
                     downloads = download_apkmirror_candidates(
-                        self.http, self.apkmirror, app, candidate, app_work_dir / "variants"
+                        self.apkmirror, app, candidate, app_work_dir / "variants"
                     )
                     variant_errors: list[str] = []
                     for result, source_page, resolved_version in downloads:

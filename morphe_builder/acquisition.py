@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import zipfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -158,24 +159,18 @@ def download_manual(http: HttpClient, url: str, destination: Path) -> DownloadRe
 
 
 def download_apkmirror_latest_candidates(
-    http: HttpClient,
     resolver: ApkMirrorResolver,
     app: AppConfig,
     destination_dir: Path,
-) -> list[tuple[DownloadResult, str, str]]:
+) -> Iterator[tuple[DownloadResult, str, str]]:
     destination_dir.mkdir(parents=True, exist_ok=True)
-    candidates = resolver.resolve_latest_candidates(app)
-    results: list[tuple[DownloadResult, str, str]] = []
-    for index, (direct_url, source_page, version) in enumerate(candidates):
+    yielded_any = False
+    for index, (direct_url, source_page, version) in enumerate(resolver.iter_latest_candidates(app)):
         destination = destination_dir / f"latest-candidate-{index}.bin"
         try:
-            result = http.download(
-                direct_url,
-                destination,
-                max_size=1_500_000_000,
-                extra_headers={"Referer": source_page},
-            )
-            results.append((result, source_page, version))
+            result = resolver.download_candidate(direct_url, source_page, destination)
+            yielded_any = True
+            yield result, source_page, version
         except ApkMirrorRateLimited:
             destination.unlink(missing_ok=True)
             raise
@@ -185,31 +180,24 @@ def download_apkmirror_latest_candidates(
                 raise ApkMirrorRateLimited() from exc
         except Exception:
             destination.unlink(missing_ok=True)
-    if not results:
+    if not yielded_any:
         raise AcquisitionError(f"All latest APKMirror variants failed for {app.key}")
-    return results
 
 
 def download_apkmirror_candidates(
-    http: HttpClient,
     resolver: ApkMirrorResolver,
     app: AppConfig,
     version: str,
     destination_dir: Path,
-) -> list[tuple[DownloadResult, str, str]]:
+) -> Iterator[tuple[DownloadResult, str, str]]:
     destination_dir.mkdir(parents=True, exist_ok=True)
-    candidates = resolver.resolve_candidates(app, version)
-    results: list[tuple[DownloadResult, str, str]] = []
-    for index, (direct_url, source_page) in enumerate(candidates):
+    yielded_any = False
+    for index, (direct_url, source_page) in enumerate(resolver.iter_candidates(app, version)):
         destination = destination_dir / f"candidate-{index}.bin"
         try:
-            result = http.download(
-                direct_url,
-                destination,
-                max_size=1_500_000_000,
-                extra_headers={"Referer": source_page},
-            )
-            results.append((result, source_page, version))
+            result = resolver.download_candidate(direct_url, source_page, destination)
+            yielded_any = True
+            yield result, source_page, version
         except ApkMirrorRateLimited:
             destination.unlink(missing_ok=True)
             raise
@@ -219,30 +207,22 @@ def download_apkmirror_candidates(
                 raise ApkMirrorRateLimited() from exc
         except Exception:
             destination.unlink(missing_ok=True)
-    if not results:
+    if not yielded_any:
         raise AcquisitionError(f"All APKMirror variants failed to download for {app.key} {version}")
-    return results
 
 
 def download_apkmirror(
-    http: HttpClient,
     resolver: ApkMirrorResolver,
     app: AppConfig,
     version: str | None,
     destination: Path,
 ) -> tuple[DownloadResult, str, str]:
     if version:
-        results = download_apkmirror_candidates(http, resolver, app, version, destination.parent)
-        result, source_page, resolved_version = results[0]
-        if result.path != destination:
-            result.path.replace(destination)
-            result = DownloadResult(destination, result.size, result.sha256, result.final_url)
-        return result, source_page, resolved_version
-    direct_url, source_page, resolved_version = resolver.resolve_latest(app)
-    result = http.download(
-        direct_url,
-        destination,
-        max_size=1_500_000_000,
-        extra_headers={"Referer": source_page},
-    )
+        candidates = download_apkmirror_candidates(resolver, app, version, destination.parent)
+    else:
+        candidates = download_apkmirror_latest_candidates(resolver, app, destination.parent)
+    result, source_page, resolved_version = next(candidates)
+    if result.path != destination:
+        result.path.replace(destination)
+        result = DownloadResult(destination, result.size, result.sha256, result.final_url)
     return result, source_page, resolved_version

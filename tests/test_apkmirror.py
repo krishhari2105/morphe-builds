@@ -1,8 +1,10 @@
+import tempfile
 import unittest
-from types import SimpleNamespace
+from pathlib import Path
 
 from morphe_builder.apkmirror import ApkMirrorRateLimited, ApkMirrorResolver, Link, _challenge
 from morphe_builder.config import load_config
+from morphe_builder.http import HttpClient
 
 
 class ApkMirrorTests(unittest.TestCase):
@@ -37,18 +39,18 @@ class ApkMirrorTests(unittest.TestCase):
         resolver._html = lambda url, referer=None: ("", url)
         attempted = []
 
-        def resolve_from_release(app, version, link, listing):
+        def iter_from_release(app, version, link, listing):
             attempted.append(link.href)
             if "/x-12-7-1-release-0-release/" in link.href:
-                return [("https://download.example/twitter.apk", link.href)]
+                return iter([("https://download.example/twitter.apk", link.href)])
             raise RuntimeError("not found")
 
-        resolver._resolve_from_release = resolve_from_release
+        resolver._iter_from_release = iter_from_release
         candidates = resolver.resolve_candidates(app, "12.7.1-release.0")
         self.assertEqual(candidates[0][0], "https://download.example/twitter.apk")
         self.assertEqual(attempted[0], "https://www.apkmirror.com/apk/x-corp/twitter/x-12-7-1-release-0-release/")
 
-    def test_latest_candidates_are_sorted_and_skip_prereleases(self):
+    def test_latest_resolution_stops_after_first_candidate(self):
         app = load_config().apps["youtube"]
         resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
         resolver._html = lambda url, referer=None: (
@@ -58,11 +60,16 @@ class ApkMirrorTests(unittest.TestCase):
             '<a href="/apk/google-inc/chrome/google-chrome-151-0-7922-71-release/">Chrome 151.0.7922.71</a>',
             url,
         )
-        resolver._resolve_from_release = lambda app, version, link, listing: [
-            (f"https://download.example/{version}.apk", link.href)
-        ]
-        candidates = resolver.resolve_latest_candidates(app)
-        self.assertEqual([item[2] for item in candidates], ["20.12.46", "19.1.0"])
+        attempted = []
+
+        def iter_from_release(app, version, link, listing):
+            attempted.append(version)
+            return iter([(f"https://download.example/{version}.apk", link.href)])
+
+        resolver._iter_from_release = iter_from_release
+        candidate = resolver.resolve_latest(app)
+        self.assertEqual(candidate[2], "20.12.46")
+        self.assertEqual(attempted, ["20.12.46"])
 
     def test_prefers_arm64_variant(self):
         app = load_config().apps["youtube"]
@@ -73,13 +80,39 @@ class ApkMirrorTests(unittest.TestCase):
             ApkMirrorResolver._variant_score(x86, app),
         )
 
-    def test_follows_intermediate_html_to_binary_download(self):
+    def test_release_resolution_limits_variant_pages(self):
+        app = load_config().apps["gphotos"]
+        resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
+        resolver.max_variant_attempts = 3
+        release = Link("https://www.apkmirror.com/release/", "Google Photos")
+        variant_links = "".join(
+            f'<a href="https://www.apkmirror.com/variant-{index}-android-apk-download/">arm64-v8a</a>'
+            for index in range(6)
+        )
+        visited = []
+
+        def html(url, referer=None):
+            visited.append(url)
+            if url == release.href:
+                return variant_links, url
+            index = url.split("variant-")[1].split("-")[0]
+            return f'<a id="download-link" href="https://download.apkmirror.com/{index}.apk">Download</a>', url
+
+        resolver._html = html
+        candidates = resolver._resolve_from_release(app, "latest", release, app.apkmirror_url)
+        self.assertEqual(len(candidates), 3)
+        self.assertEqual(len(visited), 4)
+
+    def test_download_flow_does_not_probe_terminal_binary_twice(self):
         class Response:
-            def __init__(self, url, content_type, text=""):
+            def __init__(self, url, content_type, text="", body=b""):
                 self.url = url
-                self.headers = {"Content-Type": content_type}
+                self.headers = {"Content-Type": content_type, "Content-Length": str(len(body))}
                 self.text = text
+                self.body = body
                 self.status_code = 200
+                self.is_redirect = False
+                self.is_permanent_redirect = False
 
             def raise_for_status(self):
                 pass
@@ -87,25 +120,57 @@ class ApkMirrorTests(unittest.TestCase):
             def close(self):
                 pass
 
+            def iter_content(self, chunk_size):
+                yield self.body
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+        class Session:
+            def __init__(self, responses):
+                self.responses = responses
+                self.calls = []
+                self.headers = {}
+
+            def get(self, url, **kwargs):
+                self.calls.append(url)
+                return self.responses.pop(0)
+
         responses = [
             Response(
                 "https://www.apkmirror.com/intermediate/",
                 "text/html",
                 '<a id="download-link" href="https://download.apkmirror.com/final.apk">here</a>',
             ),
-            Response("https://download.apkmirror.com/final.apk", "application/octet-stream"),
+            Response("https://download.apkmirror.com/final.apk", "application/octet-stream", body=b"apk"),
         ]
-        session = SimpleNamespace(get=lambda *args, **kwargs: responses.pop(0))
-        resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
-        resolver.http = SimpleNamespace(session=session, timeout=(20, 120))
-        resolver.min_request_interval = 0
-        resolver._last_request_at = None
+        http = HttpClient()
+        http.session = Session(responses)
+        resolver = ApkMirrorResolver(http, min_request_interval=0)
+        with tempfile.TemporaryDirectory() as temp:
+            destination = Path(temp) / "base.apk"
+            result = resolver.download_candidate(
+                "https://www.apkmirror.com/start/",
+                "https://www.apkmirror.com/variant/",
+                destination,
+            )
+            self.assertEqual(destination.read_bytes(), b"apk")
+            self.assertEqual(result.final_url, "https://download.apkmirror.com/final.apk")
         self.assertEqual(
-            resolver._follow_download_pages(
-                "https://www.apkmirror.com/start/", "https://www.apkmirror.com/variant/"
-            ),
-            "https://download.apkmirror.com/final.apk",
+            http.session.calls,
+            [
+                "https://www.apkmirror.com/start/",
+                "https://download.apkmirror.com/final.apk",
+            ],
         )
+
+    def test_resolver_uses_browser_user_agent_with_injected_client(self):
+        http = HttpClient()
+        ApkMirrorResolver(http, min_request_interval=0)
+        self.assertIn("Mozilla/5.0", http.session.headers["User-Agent"])
 
     def test_rate_limit_stops_variant_iteration(self):
         app = load_config().apps["gphotos"]

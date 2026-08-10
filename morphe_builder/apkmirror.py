@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
 from .http import HttpClient
-from .models import AppConfig
+from .models import AppConfig, DownloadResult
 from .versions import version_key
+
+
+_BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
 
 
 class ApkMirrorError(RuntimeError):
@@ -76,15 +84,21 @@ def _slug_version(version: str) -> list[str]:
 
 
 class ApkMirrorResolver:
-    def __init__(self, http: HttpClient | None = None, min_request_interval: float = 1.0) -> None:
-        self.http = http or HttpClient(user_agent=(
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-        ))
+    def __init__(
+        self,
+        http: HttpClient | None = None,
+        min_request_interval: float = 1.0,
+        max_release_attempts: int = 2,
+        max_variant_attempts: int = 3,
+    ) -> None:
+        self.http = http or HttpClient(user_agent=_BROWSER_USER_AGENT)
         self.min_request_interval = max(0.0, min_request_interval)
+        self.max_release_attempts = max(1, max_release_attempts)
+        self.max_variant_attempts = max(1, max_variant_attempts)
         self._last_request_at: float | None = None
         self.http.session.headers.update(
             {
+                "User-Agent": _BROWSER_USER_AGENT,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.8",
             }
@@ -105,14 +119,19 @@ class ApkMirrorResolver:
         self._pace_request()
         response = self.http.session.get(url, headers=headers, timeout=self.http.timeout)
         if response.status_code == 429:
-            raise ApkMirrorRateLimited(response.headers.get("Retry-After"))
+            retry_after = response.headers.get("Retry-After")
+            response.close()
+            raise ApkMirrorRateLimited(retry_after)
         if response.status_code == 403:
+            response.close()
             raise ApkMirrorError("APKMirror blocked the request with HTTP 403")
         response.raise_for_status()
         html = response.text
+        response_url = response.url
+        response.close()
         if _challenge(html):
             raise ApkMirrorError("APKMirror returned a Cloudflare/CAPTCHA challenge")
-        return html, response.url
+        return html, response_url
 
     @staticmethod
     def _links(html: str, base_url: str) -> list[Link]:
@@ -126,7 +145,7 @@ class ApkMirrorResolver:
                 result.append(Link(absolute, link.text, link.element_id, link.title))
         return result
 
-    def resolve_latest_candidates(self, app: AppConfig) -> list[tuple[str, str, str]]:
+    def iter_latest_candidates(self, app: AppConfig) -> Iterator[tuple[str, str, str]]:
         listing_html, listing_url = self._html(app.apkmirror_url)
         release_candidates: list[tuple[str, Link]] = []
         seen: set[str] = set()
@@ -152,26 +171,32 @@ class ApkMirrorResolver:
 
         release_candidates.sort(key=lambda item: version_key(item[0]), reverse=True)
         errors: list[str] = []
-        all_candidates: list[tuple[str, str, str]] = []
-        for version, link in release_candidates:
+        yielded_any = False
+        release_limit = getattr(self, "max_release_attempts", 2)
+        for version, link in release_candidates[:release_limit]:
             try:
-                resolved = self._resolve_from_release(app, version, link, listing_url)
+                for direct, page in self._iter_from_release(app, version, link, listing_url):
+                    yielded_any = True
+                    yield direct, page, version
             except ApkMirrorRateLimited:
                 raise
             except ApkMirrorError as exc:
                 errors.append(f"{version}: {exc}")
                 continue
-            all_candidates.extend((direct, page, version) for direct, page in resolved)
-        if all_candidates:
-            return all_candidates
-        detail = f" ({'; '.join(errors[:3])})" if errors else ""
-        raise ApkMirrorError(f"Could not determine the latest APKMirror version for {app.name}{detail}")
+        if not yielded_any:
+            detail = f" ({'; '.join(errors[:3])})" if errors else ""
+            raise ApkMirrorError(f"Could not determine the latest APKMirror version for {app.name}{detail}")
+
+    def resolve_latest_candidates(self, app: AppConfig) -> list[tuple[str, str, str]]:
+        return list(self.iter_latest_candidates(app))
 
     def resolve_latest(self, app: AppConfig) -> tuple[str, str, str]:
-        candidates = self.resolve_latest_candidates(app)
-        return candidates[0]
+        return next(self.iter_latest_candidates(app))
 
     def resolve(self, app: AppConfig, version: str) -> tuple[str, str]:
+        return next(self.iter_candidates(app, version))
+
+    def iter_candidates(self, app: AppConfig, version: str) -> Iterator[tuple[str, str]]:
         listing_html, listing_url = self._html(app.apkmirror_url)
         version_tokens = _slug_version(version)
         release_links = [
@@ -182,28 +207,13 @@ class ApkMirrorResolver:
             and "release" in link.href.lower()
         ]
         if not release_links:
-            candidates = self._resolve_constructed_candidates(app, version, listing_url)
-        else:
-            release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
-            candidates = self._resolve_from_release(app, version, release_link, listing_url)
-        if not candidates:
-            raise ApkMirrorError(f"No downloadable variants found for {app.name} {version}")
-        return candidates[0]
+            yield from self._iter_constructed_candidates(app, version, listing_url)
+            return
+        release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
+        yield from self._iter_from_release(app, version, release_link, listing_url)
 
     def resolve_candidates(self, app: AppConfig, version: str) -> list[tuple[str, str]]:
-        listing_html, listing_url = self._html(app.apkmirror_url)
-        version_tokens = _slug_version(version)
-        release_links = [
-            link
-            for link in self._links(listing_html, listing_url)
-            if "/apk/" in link.href
-            and any(token in (link.href + " " + link.text).lower() for token in version_tokens)
-            and "release" in link.href.lower()
-        ]
-        if not release_links:
-            return self._resolve_constructed_candidates(app, version, listing_url)
-        release_link = max(release_links, key=lambda link: self._release_score(link, version_tokens))
-        return self._resolve_from_release(app, version, release_link, listing_url)
+        return list(self.iter_candidates(app, version))
 
     def _resolve_constructed_candidates(
         self,
@@ -211,15 +221,30 @@ class ApkMirrorResolver:
         version: str,
         listing_url: str,
     ) -> list[tuple[str, str]]:
+        return list(self._iter_constructed_candidates(app, version, listing_url))
+
+    def _iter_constructed_candidates(
+        self,
+        app: AppConfig,
+        version: str,
+        listing_url: str,
+    ) -> Iterator[tuple[str, str]]:
         errors: list[str] = []
+        yielded_any = False
         for release_url in self._constructed_release_urls(app, version):
             release_link = Link(release_url, f"{app.name} {version}")
             try:
-                return self._resolve_from_release(app, version, release_link, listing_url)
+                for candidate in self._iter_from_release(app, version, release_link, listing_url):
+                    yielded_any = True
+                    yield candidate
+                if yielded_any:
+                    return
             except ApkMirrorRateLimited:
                 raise
             except Exception as exc:
                 errors.append(f"{release_url}: {exc}")
+        if yielded_any:
+            return
         detail = f": {'; '.join(errors[:3])}" if errors else ""
         raise ApkMirrorError(f"Could not resolve APKMirror release for {app.name} {version}{detail}")
 
@@ -248,6 +273,15 @@ class ApkMirrorResolver:
         release_link: Link,
         listing_url: str,
     ) -> list[tuple[str, str]]:
+        return list(self._iter_from_release(app, version, release_link, listing_url))
+
+    def _iter_from_release(
+        self,
+        app: AppConfig,
+        version: str,
+        release_link: Link,
+        listing_url: str,
+    ) -> Iterator[tuple[str, str]]:
         release_html, release_url = self._html(release_link.href, listing_url)
         candidates = [
             link
@@ -257,9 +291,11 @@ class ApkMirrorResolver:
         if not candidates:
             raise ApkMirrorError(f"No downloadable variants found for {app.name} {version}")
         candidates.sort(key=lambda link: self._variant_score(link, app), reverse=True)
-        resolved: list[tuple[str, str]] = []
+        candidates = [candidate for candidate in candidates if self._variant_score(candidate, app) >= 0]
+        variant_limit = getattr(self, "max_variant_attempts", 3)
         errors: list[str] = []
-        for variant in candidates:
+        yielded_any = False
+        for variant in candidates[:variant_limit]:
             try:
                 download_html, download_page_url = self._html(variant.href, release_url)
                 download_links = self._links(download_html, download_page_url)
@@ -275,73 +311,43 @@ class ApkMirrorResolver:
                     )
                 if direct is None:
                     raise ApkMirrorError("download link missing")
-                final_url = self._follow_download_pages(direct.href, download_page_url)
-                if final_url not in {item[0] for item in resolved}:
-                    resolved.append((final_url, variant.href))
+                yielded_any = True
+                yield direct.href, variant.href
             except ApkMirrorRateLimited:
                 raise
             except ApkMirrorError as exc:
                 errors.append(f"{variant.text or variant.href}: {exc}")
-        if not resolved:
+        if not yielded_any:
             detail = "; ".join(errors[:3])
             raise ApkMirrorError(f"No usable APKMirror variants: {detail}")
-        return resolved
 
-    def _follow_download_pages(self, url: str, referer: str) -> str:
-        current_url = url
-        current_referer = referer
-        seen: set[str] = set()
-        for _ in range(5):
-            if current_url in seen:
-                raise ApkMirrorError("APKMirror download flow entered a redirect/page loop")
-            seen.add(current_url)
-            self._pace_request()
-            response = self.http.session.get(
-                current_url,
-                headers={"Referer": current_referer},
-                stream=True,
-                allow_redirects=True,
-                timeout=self.http.timeout,
+    def download_candidate(self, url: str, referer: str, destination: Path) -> DownloadResult:
+        return self.http.download(
+            url,
+            destination,
+            max_size=1_500_000_000,
+            extra_headers={"Referer": referer},
+            before_request=self._pace_request,
+            html_link_resolver=self._next_download_link,
+        )
+
+    def _next_download_link(self, html: str, page_url: str) -> str | None:
+        if _challenge(html):
+            raise ApkMirrorError("APKMirror returned a Cloudflare/CAPTCHA challenge")
+        links = self._links(html, page_url)
+        next_link = next((link for link in links if link.element_id == "download-link"), None)
+        if next_link is None:
+            next_link = next(
+                (
+                    link
+                    for link in links
+                    if "download.php" in link.href.lower()
+                    or "key=" in link.href.lower()
+                    or link.text.strip().lower() in {"here", "click here", "download"}
+                ),
+                None,
             )
-            if response.status_code == 429:
-                retry_after = response.headers.get("Retry-After")
-                response.close()
-                raise ApkMirrorRateLimited(retry_after)
-            if response.status_code == 403:
-                response.close()
-                raise ApkMirrorError("APKMirror blocked the download flow with HTTP 403")
-            response.raise_for_status()
-            content_type = response.headers.get("Content-Type", "").lower()
-            if "html" not in content_type:
-                final_url = response.url
-                response.close()
-                return final_url
-            html = response.text
-            page_url = response.url
-            response.close()
-            if _challenge(html):
-                raise ApkMirrorError("APKMirror returned a Cloudflare/CAPTCHA challenge")
-            links = self._links(html, page_url)
-            next_link = next((link for link in links if link.element_id == "download-link"), None)
-            if next_link is None:
-                next_link = next(
-                    (
-                        link
-                        for link in links
-                        if (
-                            "download.php" in link.href.lower()
-                            or "key=" in link.href.lower()
-                            or link.text.strip().lower() in {"here", "click here", "download"}
-                        )
-                        and link.href not in seen
-                    ),
-                    None,
-                )
-            if next_link is None:
-                raise ApkMirrorError("APKMirror intermediate page contained no next download link")
-            current_referer = page_url
-            current_url = next_link.href
-        raise ApkMirrorError("APKMirror download flow exceeded the page limit")
+        return next_link.href if next_link else None
 
     @staticmethod
     def _release_score(link: Link, tokens: list[str]) -> int:

@@ -4,7 +4,7 @@ import hashlib
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urljoin, urlsplit
 
 import requests
@@ -95,6 +95,8 @@ class HttpClient:
         expected_size: int | None = None,
         max_size: int = 1_500_000_000,
         extra_headers: dict[str, str] | None = None,
+        before_request: Callable[[], None] | None = None,
+        html_link_resolver: Callable[[str, str], str | None] | None = None,
     ) -> DownloadResult:
         destination.parent.mkdir(parents=True, exist_ok=True)
         temp_path = destination.with_name(f".{destination.name}.{os.getpid()}.part")
@@ -104,7 +106,9 @@ class HttpClient:
         original_origin = self._origin(url)
 
         try:
-            for _ in range(6):
+            for _ in range(10):
+                if before_request:
+                    before_request()
                 response = self.session.get(
                     current_url,
                     headers=headers,
@@ -117,16 +121,38 @@ class HttpClient:
                     response.close()
                     if not location:
                         raise DownloadError("Redirect response had no Location header")
+                    previous_url = current_url
                     current_url = urljoin(current_url, location)
                     if urlsplit(current_url).scheme != "https":
                         raise DownloadError("Refusing a non-HTTPS redirect")
                     if self._origin(current_url) != original_origin:
                         headers.pop("Authorization", None)
+                    headers["Referer"] = previous_url
                     continue
-                response.raise_for_status()
+                try:
+                    response.raise_for_status()
+                except requests.RequestException:
+                    response.close()
+                    raise
+
+                content_type = response.headers.get("Content-Type", "").lower()
+                if html_link_resolver and "html" in content_type:
+                    html = response.text
+                    page_url = response.url
+                    response.close()
+                    next_url = html_link_resolver(html, page_url)
+                    if not next_url:
+                        raise DownloadError("HTML download page contained no next link")
+                    current_url = urljoin(page_url, next_url)
+                    if urlsplit(current_url).scheme != "https":
+                        raise DownloadError("Refusing a non-HTTPS download-page link")
+                    if self._origin(current_url) != original_origin:
+                        headers.pop("Authorization", None)
+                    headers["Referer"] = page_url
+                    continue
                 break
             else:
-                raise DownloadError("Too many redirects")
+                raise DownloadError("Too many redirects or intermediate download pages")
 
             declared_size = response.headers.get("Content-Length")
             if declared_size and int(declared_size) > max_size:
