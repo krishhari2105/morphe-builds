@@ -14,3 +14,4 @@ temp_analysis_extract/
 *.part
 signing-keystore.bks
 .env
+.claude/
