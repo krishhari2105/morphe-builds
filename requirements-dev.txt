@@ -1,0 +1,4 @@
+-r requirements.txt
+mypy==1.15.0
+ruff==0.9.6
+types-requests==2.32.0.20241016

@@ -10,7 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  lint:
+    name: Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -18,7 +19,31 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install -r requirements.txt
-      - run: python -m morphe_builder validate-config
-      - run: python -m compileall -q morphe_builder tests
-      - run: python -m unittest discover -s tests -v
+          cache-dependency-path: requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Ruff linter check
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+      - name: Mypy type check
+        run: mypy morphe_builder scripts
+
+  test:
+    name: Unit Tests & Config Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Validate configuration
+        run: python -m morphe_builder validate-config
+      - name: Bytecode compilation check
+        run: python -m compileall -q morphe_builder tests scripts
+      - name: Run unit test suite
+        run: python -m unittest discover -s tests -v

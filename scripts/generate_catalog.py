@@ -4,13 +4,14 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 API = "https://api.github.com"
 
 
-def request_json(url: str, token: str) -> object:
+def request_json(url: str, token: str) -> Any:
     request = Request(
         url,
         headers={
@@ -23,7 +24,7 @@ def request_json(url: str, token: str) -> object:
         return json.load(response)
 
 
-def download_json(url: str, token: str) -> dict:
+def download_json(url: str, token: str) -> dict[str, Any]:
     request = Request(
         url,
         headers={

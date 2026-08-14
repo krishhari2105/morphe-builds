@@ -78,10 +78,13 @@ See [workflow usage](docs/workflows.md), [configuration](docs/configuration.md),
 
 ```bash
 python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt   # optional: for linting & type checks
 python -m morphe_builder validate-config
 python -m morphe_builder matrix --sources morphe,morphe-dev
 python -m morphe_builder list-versions --source morphe
 python -m unittest discover -s tests -v
+ruff check .
+mypy morphe_builder scripts
 ```
 
 A local build also needs Java 21, Android build-tools 35.0.0, and signing configuration. Preparation and signing are deliberately separate so downloaded Morphe code never runs in the process/job that holds repository-write or signing secrets:

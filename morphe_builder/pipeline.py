@@ -23,7 +23,7 @@ from .config import Config
 from .github import GitHubClient
 from .http import HttpClient
 from .manifest import build_tag, sha256_file, slug, write_checksums, write_manifest
-from .models import AppBuildResult, AppConfig, SourceConfig
+from .models import ApkInfo, AppBuildResult, AppConfig, ReleaseInfo, SourceConfig
 from .patching import ResolvedTools, list_versions, patch_unsigned, prepare_keystore, resolve_tools
 from .versions import normalize_version, version_key
 
@@ -313,7 +313,7 @@ class Builder:
         candidate_versions: list[str | None],
         manual_url: str | None,
         app_work_dir: Path,
-    ):
+    ) -> tuple[Path, ApkInfo, tuple[str, ...], bool, dict[str, Any]]:
         app_work_dir.mkdir(parents=True, exist_ok=True)
         errors: list[str] = []
 
@@ -469,7 +469,7 @@ class Builder:
                         except Exception as exc:
                             variant_errors.append(str(exc))
                             result.path.unlink(missing_ok=True)
-                    errors.append(f"{method} {candidate or 'latest'}: { '; '.join(variant_errors[:4]) }")
+                    errors.append(f"{method} {candidate or 'latest'}: {'; '.join(variant_errors[:4])}")
                 except ApkMirrorRateLimited as exc:
                     raise AcquisitionError(str(exc)) from exc
                 except Exception as exc:
@@ -561,7 +561,7 @@ class Builder:
         }
 
     @staticmethod
-    def _release_manifest(release, asset_name: str, digest: str) -> dict[str, Any]:
+    def _release_manifest(release: ReleaseInfo, asset_name: str, digest: str) -> dict[str, Any]:
         return {
             "repo": release.repo,
             "id": release.id,

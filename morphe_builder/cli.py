@@ -7,9 +7,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .config import ConfigError, load_config
+from .config import Config, ConfigError, load_config
 from .github import GitHubClient
 from .manifest import app_set_id, slug
+from .models import ReleaseInfo
 from .patching import list_versions, resolve_tools
 from .pipeline import Builder, PipelineError
 
@@ -140,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     return 2
 
 
-def _resolve_sources(config, value: str) -> list[str]:
+def _resolve_sources(config: Config, value: str) -> list[str]:
     if value == "scheduled":
         return [key for key, source in config.sources.items() if source.scheduled]
     if value == "all":
@@ -152,7 +153,7 @@ def _resolve_sources(config, value: str) -> list[str]:
     return sources
 
 
-def _release_is_complete(release) -> bool:
+def _release_is_complete(release: ReleaseInfo) -> bool:
     names = {asset.name for asset in release.assets}
     return "build-manifest.json" in names and "SHA256SUMS" in names and any(
         name.endswith(".apk") for name in names

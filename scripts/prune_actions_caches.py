@@ -4,13 +4,14 @@ import argparse
 import json
 import os
 import sys
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 API = "https://api.github.com"
 
 
-def request_json(url: str, token: str) -> dict:
+def request_json(url: str, token: str) -> dict[str, Any]:
     request = Request(
         url,
         headers={
@@ -37,8 +38,8 @@ def delete_cache(repository: str, cache_id: int, token: str) -> None:
         return
 
 
-def list_caches(repository: str, token: str) -> list[dict]:
-    caches: list[dict] = []
+def list_caches(repository: str, token: str) -> list[dict[str, Any]]:
+    caches: list[dict[str, Any]] = []
     page = 1
     while True:
         payload = request_json(
@@ -53,7 +54,7 @@ def list_caches(repository: str, token: str) -> list[dict]:
         page += 1
 
 
-def caches_to_delete(caches: list[dict], prefix: str, keep: int) -> list[dict]:
+def caches_to_delete(caches: list[dict[str, Any]], prefix: str, keep: int) -> list[dict[str, Any]]:
     matching = [item for item in caches if str(item.get("key", "")).startswith(prefix)]
     matching.sort(
         key=lambda item: (str(item.get("created_at", "")), int(item.get("id", 0))),

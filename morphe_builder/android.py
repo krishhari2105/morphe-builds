@@ -17,7 +17,7 @@ class AndroidToolError(RuntimeError):
 _PACKAGE_LINE_RE = re.compile(r"^package:\s+(.+)$", re.MULTILINE)
 _ATTRIBUTE_RE = re.compile(r"([A-Za-z0-9_]+)='([^']*)'")
 _NATIVE_RE = re.compile(r"native-code:\s+(.+)")
-_QUOTED_RE = re.compile(r"'([^']+)'" )
+_QUOTED_RE = re.compile(r"'([^']+)'")
 
 
 class AndroidTools:
