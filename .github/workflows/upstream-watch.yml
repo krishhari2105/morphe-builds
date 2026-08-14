@@ -1,6 +1,7 @@
 name: Watch Morphe releases
 
 on:
+  # 8:00 AM IST == 02:30 UTC. GitHub's scheduler can delay this by 15-30+ min.
   schedule:
     - cron: "30 2 * * *"
   workflow_dispatch:
