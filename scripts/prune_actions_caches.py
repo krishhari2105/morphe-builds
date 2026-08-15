@@ -20,7 +20,10 @@ def request_json(url: str, token: str) -> dict[str, Any]:
         },
     )
     with urlopen(request, timeout=30) as response:
-        return json.load(response)
+        payload = json.load(response)
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected GitHub API response")
+    return payload
 
 
 def delete_cache(repository: str, cache_id: int, token: str) -> None:

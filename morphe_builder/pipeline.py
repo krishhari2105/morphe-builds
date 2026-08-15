@@ -106,12 +106,13 @@ class Builder:
                     allowed_output_packages={app.package, *app.patched_packages},
                     strip_to_arm64=strip_to_arm64,
                 )
-                base_entry = {
+                base_sha256 = sha256_file(source_path)
+                base_entry: dict[str, Any] = {
                     "app": app_key,
                     "package": base_info.package,
                     "version_name": base_info.version_name,
                     "version_code": base_info.version_code,
-                    "sha256": sha256_file(source_path),
+                    "sha256": base_sha256,
                     "format": source_path.suffix.lower().lstrip("."),
                     "native_abis": list(native_abis),
                     "striplibs": ["arm64-v8a"] if strip_to_arm64 else [],
@@ -124,7 +125,7 @@ class Builder:
                         status="success",
                         version=base_info.version_name,
                         version_code=base_info.version_code,
-                        input_sha256=base_entry["sha256"],
+                        input_sha256=base_sha256,
                         output_path=str(unsigned_path),
                         output_sha256=output_sha256,
                         details={
@@ -395,25 +396,25 @@ class Builder:
                 except Exception as exc:
                     errors.append(f"apkmirror latest: {exc}")
 
-                cached = self.cache.find_latest(app)
-                if cached:
+                latest_cached = self.cache.find_latest(app)
+                if latest_cached:
                     try:
                         info, native_abis, strip = inspect_source(
-                            cached.path,
+                            latest_cached.path,
                             self.android,
                             expected_package=app.package,
-                            expected_version=cached.version_name,
+                            expected_version=latest_cached.version_name,
                             target_abi=app.target_abi,
                         )
                         return (
-                            cached.path,
+                            latest_cached.path,
                             info,
                             native_abis,
                             strip,
                             {
                                 "acquisition": "actions-cache-latest-fallback",
-                                "source_page": cached.source_page,
-                                "final_url": cached.final_url,
+                                "source_page": latest_cached.source_page,
+                                "final_url": latest_cached.final_url,
                                 "requested_version": "Any",
                                 "resolved_version": info.version_name,
                             },
@@ -424,24 +425,24 @@ class Builder:
                     raise AcquisitionError(str(rate_limit_error)) from rate_limit_error
                 continue
 
-            cached = self.cache.find(app, candidate)
-            if cached:
+            exact_cached = self.cache.find(app, candidate)
+            if exact_cached:
                 try:
                     info, native_abis, strip = inspect_source(
-                        cached.path,
+                        exact_cached.path,
                         self.android,
                         expected_package=app.package,
                         expected_version=candidate,
                         target_abi=app.target_abi,
                     )
                     return (
-                        cached.path,
+                        exact_cached.path,
                         info,
                         native_abis,
                         strip,
                         {
                             "acquisition": "actions-cache",
-                            "source_page": cached.source_page,
+                            "source_page": exact_cached.source_page,
                         },
                     )
                 except Exception as exc:
@@ -516,9 +517,10 @@ class Builder:
     def _candidate_versions(app: AppConfig, compatible: list[str], override: str | None) -> list[str | None]:
         if override and override.lower() != "auto":
             return [normalize_version(override)]
-        numeric = {normalize_version(value) for value in compatible if value.lower() != "any"}
+        numeric: set[str] = {normalize_version(value) for value in compatible if value.lower() != "any"}
         if numeric:
-            return sorted(numeric, key=version_key, reverse=True)
+            sorted_numeric: list[str | None] = [*sorted(numeric, key=version_key, reverse=True)]
+            return sorted_numeric
         if any(value.lower() == "any" for value in compatible):
             return [None]
         raise PipelineError(f"{app.name} is not compatible with the selected patch source")

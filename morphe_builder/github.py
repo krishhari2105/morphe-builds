@@ -245,7 +245,7 @@ class GitHubClient:
             raise GitHubError(f"Release {tag} disappeared after publishing")
         assets_by_name = {asset.name: asset for asset in verified.assets}
         for path in paths:
-            asset = assets_by_name.get(path.name)
-            if asset is None or not self._asset_matches(asset, path):
+            verified_asset = assets_by_name.get(path.name)
+            if verified_asset is None or not self._asset_matches(verified_asset, path):
                 raise GitHubError(f"Release {tag} failed post-upload verification: {path.name}")
         return verified
