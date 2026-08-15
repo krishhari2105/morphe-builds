@@ -5,7 +5,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
 from .config import Config, ConfigError, load_config
 from .github import GitHubClient
@@ -20,7 +19,9 @@ def _json_object(value: str, name: str) -> dict[str, str]:
         parsed = json.loads(value or "{}")
     except json.JSONDecodeError as exc:
         raise argparse.ArgumentTypeError(f"{name} must be valid JSON: {exc}") from exc
-    if not isinstance(parsed, dict) or any(not isinstance(key, str) or not isinstance(item, str) for key, item in parsed.items()):
+    if not isinstance(parsed, dict) or any(
+        not isinstance(key, str) or not isinstance(item, str) for key, item in parsed.items()
+    ):
         raise argparse.ArgumentTypeError(f"{name} must be a JSON object of string keys and values")
     return parsed
 
@@ -107,8 +108,7 @@ def main(argv: list[str] | None = None) -> int:
                     f"{slug(cli_release.tag)}-apps-{app_set_id(scheduled_apps)}-"
                 )
                 if not any(
-                    release.tag.startswith(prefix) and _release_is_complete(release)
-                    for release in current_releases
+                    release.tag.startswith(prefix) and _release_is_complete(release) for release in current_releases
                 ):
                     changed.append(source_key)
             value = json.dumps(changed, separators=(",", ":"))
@@ -155,6 +155,4 @@ def _resolve_sources(config: Config, value: str) -> list[str]:
 
 def _release_is_complete(release: ReleaseInfo) -> bool:
     names = {asset.name for asset in release.assets}
-    return "build-manifest.json" in names and "SHA256SUMS" in names and any(
-        name.endswith(".apk") for name in names
-    )
+    return "build-manifest.json" in names and "SHA256SUMS" in names and any(name.endswith(".apk") for name in names)

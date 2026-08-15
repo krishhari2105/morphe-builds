@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-
 _PACKAGE_RE = re.compile(r"Package name:\s*([A-Za-z0-9_.]+)")
 _VERSION_RE = re.compile(r"^(v?[0-9][A-Za-z0-9._+-]*(?:-[A-Za-z0-9._+-]+)?)")
 

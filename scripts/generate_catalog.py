@@ -94,9 +94,7 @@ def main() -> int:
     for app_key, candidates in candidates_by_app.items():
         preferred_sources = visible[app_key].get("preferred_sources", [])
         best_rank = min(
-            preferred_sources.index(item["source"])
-            if item["source"] in preferred_sources
-            else len(preferred_sources)
+            preferred_sources.index(item["source"]) if item["source"] in preferred_sources else len(preferred_sources)
             for item in candidates
         )
         latest[app_key] = max(

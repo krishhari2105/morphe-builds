@@ -24,7 +24,7 @@ from .github import GitHubClient
 from .http import HttpClient
 from .manifest import build_tag, sha256_file, slug, write_checksums, write_manifest
 from .models import ApkInfo, AppBuildResult, AppConfig, ReleaseInfo, SourceConfig
-from .patching import ResolvedTools, list_versions, patch_unsigned, prepare_keystore, resolve_tools
+from .patching import list_versions, patch_unsigned, prepare_keystore, resolve_tools
 from .versions import normalize_version, version_key
 
 
@@ -84,11 +84,7 @@ class Builder:
                     base_urls.get(app_key),
                     work_dir / app_key,
                 )
-                arm64_suffix = (
-                    "-arm64"
-                    if native_abis and (strip_to_arm64 or set(native_abis) == {"arm64-v8a"})
-                    else ""
-                )
+                arm64_suffix = "-arm64" if native_abis and (strip_to_arm64 or set(native_abis) == {"arm64-v8a"}) else ""
                 patch_input = work_dir / app_key / f"patch-input{source_path.suffix.lower()}"
                 shutil.copy2(source_path, patch_input)
                 if sha256_file(patch_input) != sha256_file(source_path):
@@ -150,9 +146,7 @@ class Builder:
             "patch_release": self._release_manifest(
                 tools.patches_release, tools.patches_asset.name, tools.patches_sha256
             ),
-            "cli_release": self._release_manifest(
-                tools.cli_release, tools.cli_asset.name, tools.cli_sha256
-            ),
+            "cli_release": self._release_manifest(tools.cli_release, tools.cli_asset.name, tools.cli_sha256),
             "target_abi": "arm64-v8a",
             "bases": sorted(base_plan, key=lambda item: item["app"]),
             "results": [asdict(result) for result in results],
@@ -194,9 +188,7 @@ class Builder:
         if len(base_apps) != len(raw_bases) or len(base_apps) != len(set(base_apps)):
             raise PipelineError("Prepared base metadata is invalid or contains duplicate apps")
         if set(base_apps) != set(declared_apps):
-            raise PipelineError(
-                f"Prepared bases do not exactly match declared apps: {declared_apps} vs {base_apps}"
-            )
+            raise PipelineError(f"Prepared bases do not exactly match declared apps: {declared_apps} vs {base_apps}")
         expected_apps = self._select_apps(source, list(declared_apps))
         if expected_apps != declared_apps:
             raise PipelineError(f"Prepared app order or source scope is invalid: {declared_apps}")
@@ -212,9 +204,7 @@ class Builder:
         artifact_dir.mkdir(parents=True, exist_ok=True)
 
         keystore_path = prepare_keystore(work_dir)
-        decoded_keystore = bool(os.environ.get("SIGNING_KEYSTORE_B64")) and not os.environ.get(
-            "SIGNING_KEYSTORE_PATH"
-        )
+        decoded_keystore = bool(os.environ.get("SIGNING_KEYSTORE_B64")) and not os.environ.get("SIGNING_KEYSTORE_PATH")
         finalized_results: list[AppBuildResult] = []
         try:
             for raw in state.get("results", []):
@@ -255,9 +245,7 @@ class Builder:
                 )
                 self.android.check_alignment(output_path)
                 page_aligned_16k = self.android.check_16k_page_alignment(output_path)
-                fingerprint = self.android.verify_signature(
-                    output_path, os.environ.get("SIGNING_CERT_SHA256")
-                )
+                fingerprint = self.android.verify_signature(output_path, os.environ.get("SIGNING_CERT_SHA256"))
                 result.output_path = str(output_path)
                 result.output_sha256 = sha256_file(output_path)
                 result.details = {
@@ -293,7 +281,7 @@ class Builder:
         write_manifest(manifest_path, manifest)
         outputs = [Path(result.output_path) for result in finalized_results if result.output_path]
         checksums_path = artifact_dir / "SHA256SUMS"
-        write_checksums(checksums_path, outputs + [manifest_path])
+        write_checksums(checksums_path, [*outputs, manifest_path])
         self._write_step_summary(source, finalized_results, tag, {})
 
         if publish:
@@ -301,7 +289,7 @@ class Builder:
                 tag,
                 f"{source.name}: {state['patch_release']['tag']}",
                 self._release_body(source, state, finalized_results),
-                outputs + [manifest_path, checksums_path],
+                [*outputs, manifest_path, checksums_path],
             )
             if source_key in {"morphe", "morphe-dev"}:
                 self.github.prune_build_releases(source_key, release, self.config.sources)
@@ -342,10 +330,16 @@ class Builder:
                     version_code=info.version_code,
                     source_page=None,
                 )
-                return cached.path, info, native_abis, strip, {
-                    "acquisition": "manual-url",
-                    "source_page": None,
-                }
+                return (
+                    cached.path,
+                    info,
+                    native_abis,
+                    strip,
+                    {
+                        "acquisition": "manual-url",
+                        "source_page": None,
+                    },
+                )
             except Exception as exc:
                 errors.append(f"manual-url: {exc}")
                 temp_path.unlink(missing_ok=True)
@@ -378,13 +372,19 @@ class Builder:
                                 requested_version="Any",
                                 resolution_mode="latest",
                             )
-                            return cached.path, info, native_abis, strip, {
-                                "acquisition": "apkmirror-latest",
-                                "source_page": source_page,
-                                "final_url": result.final_url,
-                                "requested_version": "Any",
-                                "resolved_version": info.version_name,
-                            }
+                            return (
+                                cached.path,
+                                info,
+                                native_abis,
+                                strip,
+                                {
+                                    "acquisition": "apkmirror-latest",
+                                    "source_page": source_page,
+                                    "final_url": result.final_url,
+                                    "requested_version": "Any",
+                                    "resolved_version": info.version_name,
+                                },
+                            )
                         except Exception as exc:
                             latest_errors.append(str(exc))
                             result.path.unlink(missing_ok=True)
@@ -405,13 +405,19 @@ class Builder:
                             expected_version=cached.version_name,
                             target_abi=app.target_abi,
                         )
-                        return cached.path, info, native_abis, strip, {
-                            "acquisition": "actions-cache-latest-fallback",
-                            "source_page": cached.source_page,
-                            "final_url": cached.final_url,
-                            "requested_version": "Any",
-                            "resolved_version": info.version_name,
-                        }
+                        return (
+                            cached.path,
+                            info,
+                            native_abis,
+                            strip,
+                            {
+                                "acquisition": "actions-cache-latest-fallback",
+                                "source_page": cached.source_page,
+                                "final_url": cached.final_url,
+                                "requested_version": "Any",
+                                "resolved_version": info.version_name,
+                            },
+                        )
                     except Exception as exc:
                         errors.append(f"cache latest fallback: {exc}")
                 if rate_limit_error:
@@ -428,10 +434,16 @@ class Builder:
                         expected_version=candidate,
                         target_abi=app.target_abi,
                     )
-                    return cached.path, info, native_abis, strip, {
-                        "acquisition": "actions-cache",
-                        "source_page": cached.source_page,
-                    }
+                    return (
+                        cached.path,
+                        info,
+                        native_abis,
+                        strip,
+                        {
+                            "acquisition": "actions-cache",
+                            "source_page": cached.source_page,
+                        },
+                    )
                 except Exception as exc:
                     errors.append(f"cache {candidate or 'latest'}: {exc}")
 
@@ -441,9 +453,7 @@ class Builder:
                 temp_path = app_work_dir / "base-download.bin"
                 temp_path.unlink(missing_ok=True)
                 try:
-                    downloads = download_apkmirror_candidates(
-                        self.apkmirror, app, candidate, app_work_dir / "variants"
-                    )
+                    downloads = download_apkmirror_candidates(self.apkmirror, app, candidate, app_work_dir / "variants")
                     variant_errors: list[str] = []
                     for result, source_page, resolved_version in downloads:
                         try:
@@ -462,10 +472,16 @@ class Builder:
                                 version_code=info.version_code,
                                 source_page=source_page,
                             )
-                            return cached.path, info, native_abis, strip, {
-                                "acquisition": method,
-                                "source_page": source_page,
-                            }
+                            return (
+                                cached.path,
+                                info,
+                                native_abis,
+                                strip,
+                                {
+                                    "acquisition": method,
+                                    "source_page": source_page,
+                                },
+                            )
                         except Exception as exc:
                             variant_errors.append(str(exc))
                             result.path.unlink(missing_ok=True)
@@ -479,7 +495,7 @@ class Builder:
         detail = "; ".join(errors[-8:])
         raise AcquisitionError(
             f"Could not acquire a validated base for {app.key}. {detail}. "
-            f"Rerun with base_urls JSON such as {{\"{app.key}\": \"https://...\"}}"
+            f'Rerun with base_urls JSON such as {{"{app.key}": "https://..."}}'
         )
 
     @staticmethod
@@ -577,9 +593,7 @@ class Builder:
         return f"https://github.com/{repository}/actions/runs/{run_id}" if repository and run_id else None
 
     @staticmethod
-    def _release_body(
-        source: SourceConfig, state: dict[str, Any], results: list[AppBuildResult]
-    ) -> str:
+    def _release_body(source: SourceConfig, state: dict[str, Any], results: list[AppBuildResult]) -> str:
         lines = [
             f"**Patch source:** {source.name} (`{state['patch_release']['tag']}`)",
             f"**Morphe CLI:** `{state['cli_release']['tag']}`",

@@ -160,9 +160,7 @@ class AndroidTools:
                 apksigner_jar = self.apksigner.parent / "lib" / "apksigner.jar"
                 java_path = shutil.which("java")
                 if not java_path or not bcprov_path.is_file() or not apksigner_jar.is_file():
-                    raise AndroidToolError(
-                        "BKS signing requires Java, apksigner.jar, and BCPROV_JAR (libbcprov-java)"
-                    )
+                    raise AndroidToolError("BKS signing requires Java, apksigner.jar, and BCPROV_JAR (libbcprov-java)")
                 sign_command = [
                     java_path,
                     "-cp",

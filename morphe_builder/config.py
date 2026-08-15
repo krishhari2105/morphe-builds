@@ -8,7 +8,6 @@ from typing import Any
 
 from .models import AppConfig, SourceConfig, ToolConfig
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "config"
 
@@ -161,12 +160,8 @@ def _validate_patch_config(
         source_defaults = source_value.get("defaults", {})
         if not isinstance(source_defaults, dict):
             raise ConfigError(f"patches.sources.{source_key}.defaults must be an object")
-        _validate_patch_list(
-            source_defaults.get("enable", []), f"patches.sources.{source_key}.defaults.enable"
-        )
-        _validate_patch_list(
-            source_defaults.get("disable", []), f"patches.sources.{source_key}.defaults.disable"
-        )
+        _validate_patch_list(source_defaults.get("enable", []), f"patches.sources.{source_key}.defaults.enable")
+        _validate_patch_list(source_defaults.get("disable", []), f"patches.sources.{source_key}.defaults.disable")
         source_apps = source_value.get("apps", {})
         if not isinstance(source_apps, dict):
             raise ConfigError(f"patches.sources.{source_key}.apps must be an object")

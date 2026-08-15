@@ -86,8 +86,7 @@ class ApkMirrorTests(unittest.TestCase):
         resolver.max_variant_attempts = 3
         release = Link("https://www.apkmirror.com/release/", "Google Photos")
         variant_links = "".join(
-            f'<a href="{release.href}variant-{index}-android-apk-download/">arm64-v8a</a>'
-            for index in range(6)
+            f'<a href="{release.href}variant-{index}-android-apk-download/">arm64-v8a</a>' for index in range(6)
         )
         visited = []
 
@@ -108,8 +107,7 @@ class ApkMirrorTests(unittest.TestCase):
         resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
         resolver.max_variant_attempts = 3
         release = Link(
-            "https://www.apkmirror.com/apk/google-inc/youtube-music/"
-            "youtube-music-9-15-51-release/",
+            "https://www.apkmirror.com/apk/google-inc/youtube-music/youtube-music-9-15-51-release/",
             "YouTube Music 9.15.51",
         )
         armv7 = release.href + "youtube-music-9-15-51-7-android-apk-download/"

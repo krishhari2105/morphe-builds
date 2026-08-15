@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import os
-import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import requests
@@ -187,9 +187,7 @@ class HttpClient:
 
             actual_sha256 = digest.hexdigest()
             if expected_sha256 and actual_sha256.lower() != expected_sha256.lower().removeprefix("sha256:"):
-                raise DownloadError(
-                    f"SHA-256 mismatch: expected {expected_sha256}, received {actual_sha256}"
-                )
+                raise DownloadError(f"SHA-256 mismatch: expected {expected_sha256}, received {actual_sha256}")
             temp_path.replace(destination)
             return DownloadResult(path=destination, size=size, sha256=actual_sha256, final_url=current_url)
         except (requests.RequestException, OSError, ValueError) as exc:

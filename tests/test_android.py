@@ -32,9 +32,11 @@ class AndroidTests(unittest.TestCase):
                     Path(command[command.index("--out") + 1]).write_bytes(b"signed")
                 return SimpleNamespace(returncode=0, stdout="", stderr="")
 
-            with patch.dict("os.environ", {"BCPROV_JAR": str(bcprov)}, clear=False), patch(
-                "morphe_builder.android.shutil.which", return_value="/usr/bin/java"
-            ), patch("morphe_builder.android.subprocess.run", side_effect=fake_run):
+            with (
+                patch.dict("os.environ", {"BCPROV_JAR": str(bcprov)}, clear=False),
+                patch("morphe_builder.android.shutil.which", return_value="/usr/bin/java"),
+                patch("morphe_builder.android.subprocess.run", side_effect=fake_run),
+            ):
                 tools.align_and_sign(
                     unsigned,
                     output,
@@ -65,9 +67,10 @@ class AndroidTests(unittest.TestCase):
                 "versionName='1.2.3' split='config.arm64_v8a'\n"
                 "native-code: 'arm64-v8a'\n"
             )
-            with patch("morphe_builder.android.subprocess.run", return_value=SimpleNamespace(
-                returncode=0, stdout=output, stderr=""
-            )):
+            with patch(
+                "morphe_builder.android.subprocess.run",
+                return_value=SimpleNamespace(returncode=0, stdout=output, stderr=""),
+            ):
                 info = tools.inspect_apk(path)
             self.assertEqual(info.package, "com.example")
             self.assertEqual(info.version_code, "42")

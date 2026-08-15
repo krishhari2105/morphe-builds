@@ -35,9 +35,7 @@ class AcquisitionTests(unittest.TestCase):
 
         resolver = Resolver()
         with tempfile.TemporaryDirectory() as temp:
-            downloads = download_apkmirror_latest_candidates(
-                resolver, app, Path(temp)
-            )
+            downloads = download_apkmirror_latest_candidates(resolver, app, Path(temp))
             first = next(downloads)
             self.assertEqual(first[2], "9.26.51")
             self.assertEqual(resolver.resolved, 1)

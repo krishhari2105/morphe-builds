@@ -48,7 +48,9 @@ class BundleTests(unittest.TestCase):
                     "x86.apk": apk(split="config.x86", native=("x86",)),
                 }
             )
-            info = inspect_bundle(bundle, android, expected_package="com.google.android.youtube", expected_version="20.12.46")
+            info = inspect_bundle(
+                bundle, android, expected_package="com.google.android.youtube", expected_version="20.12.46"
+            )
             self.assertTrue(info.needs_arm64_strip)
             self.assertEqual(set(info.native_abis), {"arm64-v8a", "x86"})
             self.assertEqual(bundle.read_bytes(), before)

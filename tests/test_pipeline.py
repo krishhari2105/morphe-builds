@@ -64,9 +64,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_single_base_url_rejects_multiple_apps(self):
         with self.assertRaisesRegex(PipelineError, "exactly one selected app"):
-            self.builder._merge_base_url(
-                ["youtube", "yt-music", "reddit"], {}, "https://example.com/base.apk"
-            )
+            self.builder._merge_base_url(["youtube", "yt-music", "reddit"], {}, "https://example.com/base.apk")
 
     def test_incompatible_source_app_is_rejected(self):
         with self.assertRaisesRegex(PipelineError, "not configured"):

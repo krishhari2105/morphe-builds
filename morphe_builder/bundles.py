@@ -96,17 +96,13 @@ def inspect_bundle(
     version_codes = {apk.version_code for apk in apks}
     if version_codes != {base.version_code}:
         raise BundleError(f"Bundle contains multiple version codes: {sorted(version_codes)}")
-    conflicting_names = {
-        apk.version_name for apk in apks if apk.version_name and apk.version_name != base.version_name
-    }
+    conflicting_names = {apk.version_name for apk in apks if apk.version_name and apk.version_name != base.version_name}
     if conflicting_names:
         raise BundleError(
             f"Bundle contains version names that conflict with base {base.version_name}: {sorted(conflicting_names)}"
         )
     if expected_version and base.version_name.lstrip("v") != expected_version.lstrip("v"):
-        raise BundleError(
-            f"Bundle version mismatch: expected {expected_version}, found {base.version_name}"
-        )
+        raise BundleError(f"Bundle version mismatch: expected {expected_version}, found {base.version_name}")
 
     native_abis = tuple(sorted({abi for apk in apks for abi in apk.native_code}))
     if native_abis and target_abi not in native_abis:

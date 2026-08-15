@@ -3,8 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 def canonical_json(data: Any) -> str:
@@ -28,10 +29,7 @@ def build_tag(source: str, patch_tag: str, cli_tag: str, plan: dict[str, Any]) -
     normalized_plan = dict(plan)
     normalized_plan["apps"] = sorted(plan.get("apps", []))
     apps_id = app_set_id(normalized_plan["apps"])
-    return (
-        f"build-{slug(source)}-{slug(patch_tag)}-{slug(cli_tag)}-"
-        f"apps-{apps_id}-{plan_digest(normalized_plan)[:12]}"
-    )
+    return f"build-{slug(source)}-{slug(patch_tag)}-{slug(cli_tag)}-apps-{apps_id}-{plan_digest(normalized_plan)[:12]}"
 
 
 def sha256_file(path: Path) -> str:

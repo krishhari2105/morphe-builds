@@ -4,14 +4,14 @@ import os
 import re
 import tempfile
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 from urllib.parse import quote
 
 from .http import HttpClient
 from .manifest import sha256_file
 from .models import DownloadResult, ReleaseAsset, ReleaseInfo, SourceConfig
-
 
 API = "https://api.github.com"
 

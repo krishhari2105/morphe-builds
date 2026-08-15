@@ -114,9 +114,10 @@ class PatchingTests(unittest.TestCase):
                 stdout="",
                 stderr="INFO: Package name: com.google.android.youtube\n20.12.46\n",
             )
-            with patch.dict(os.environ, {"GITHUB_TOKEN": "secret"}, clear=False), patch(
-                "morphe_builder.patching.subprocess.run", return_value=process
-            ) as run:
+            with (
+                patch.dict(os.environ, {"GITHUB_TOKEN": "secret"}, clear=False),
+                patch("morphe_builder.patching.subprocess.run", return_value=process) as run,
+            ):
                 parsed = list_versions(tools)
             self.assertEqual(parsed["com.google.android.youtube"], ["20.12.46"])
             self.assertNotIn("GITHUB_TOKEN", run.call_args.kwargs["env"])
@@ -133,21 +134,23 @@ class PatchingTests(unittest.TestCase):
                 output.write_bytes(b"patched")
                 return SimpleNamespace(returncode=0)
 
-            with patch("morphe_builder.patching.subprocess.run", side_effect=mutate_source):
-                with self.assertRaisesRegex(PatchingError, "modified the source"):
-                    patch_unsigned(
-                        load_config(),
-                        load_config().sources["morphe"],
-                        "youtube",
-                        source,
-                        output,
-                        root / "result.json",
-                        self.tools(root),
-                        FakeAndroid(),
-                        version_name="20.12.46",
-                        allowed_output_packages={"com.google.android.youtube", "app.morphe.android.youtube"},
-                        strip_to_arm64=False,
-                        )
+            with (
+                patch("morphe_builder.patching.subprocess.run", side_effect=mutate_source),
+                self.assertRaisesRegex(PatchingError, "modified the source"),
+            ):
+                patch_unsigned(
+                    load_config(),
+                    load_config().sources["morphe"],
+                    "youtube",
+                    source,
+                    output,
+                    root / "result.json",
+                    self.tools(root),
+                    FakeAndroid(),
+                    version_name="20.12.46",
+                    allowed_output_packages={"com.google.android.youtube", "app.morphe.android.youtube"},
+                    strip_to_arm64=False,
+                )
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@ import unittest
 
 from morphe_builder.versions import VersionParseError, parse_compatible_versions, version_key
 
-
 OUTPUT = """
 INFO: Package name: com.google.android.youtube
 20.12.46 (58 patches)

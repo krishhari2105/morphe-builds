@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -42,9 +41,7 @@ def list_caches(repository: str, token: str) -> list[dict[str, Any]]:
     caches: list[dict[str, Any]] = []
     page = 1
     while True:
-        payload = request_json(
-            f"{API}/repos/{repository}/actions/caches?per_page=100&page={page}", token
-        )
+        payload = request_json(f"{API}/repos/{repository}/actions/caches?per_page=100&page={page}", token)
         batch = payload.get("actions_caches", [])
         if not isinstance(batch, list):
             raise RuntimeError("Unexpected Actions caches response")

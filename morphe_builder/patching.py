@@ -87,11 +87,7 @@ def prepare_keystore(work_dir: Path) -> Path:
 
 def _sanitized_morphe_env() -> dict[str, str]:
     blocked = ("TOKEN", "SECRET", "PASSWORD", "KEYSTORE", "ACTIONS_RUNTIME", "ACTIONS_ID_TOKEN")
-    return {
-        key: value
-        for key, value in os.environ.items()
-        if not any(marker in key.upper() for marker in blocked)
-    }
+    return {key: value for key, value in os.environ.items() if not any(marker in key.upper() for marker in blocked)}
 
 
 def patch_unsigned(
