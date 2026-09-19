@@ -13,6 +13,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.apps["youtube"].package, "com.google.android.youtube")
         self.assertTrue(config.sources["morphe"].scheduled)
         self.assertEqual(config.sources["morphe-dev"].channel, "prerelease")
+        self.assertTrue(config.tools.force_full_resource_encode)
 
     def test_piko_uses_single_mpp_without_shim(self):
         config = load_config()
@@ -38,6 +39,18 @@ class ConfigTests(unittest.TestCase):
             data["sources"] = {"morphe": {"defaults": {"enable": "PatchName"}}}
             path.write_text(json.dumps(data), encoding="utf-8")
             with self.assertRaises(ConfigError):
+                load_config(root)
+
+    def test_rejects_non_boolean_full_resource_encode_setting(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for source in CONFIG_DIR.glob("*.json"):
+                shutil.copy2(source, root / source.name)
+            path = root / "tools.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["force_full_resource_encode"] = "true"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ConfigError, "force_full_resource_encode"):
                 load_config(root)
 
 

@@ -110,8 +110,12 @@ def load_config(config_dir: Path = CONFIG_DIR) -> Config:
     if not sources:
         raise ConfigError("No patch sources configured")
 
+    force_full_resource_encode = _required(tools_data, "force_full_resource_encode", "tools")
+    if not isinstance(force_full_resource_encode, bool):
+        raise ConfigError("tools.force_full_resource_encode must be a boolean")
     tools = ToolConfig(
         android_build_tools=str(_required(tools_data, "android_build_tools", "tools")),
+        force_full_resource_encode=force_full_resource_encode,
     )
 
     _validate_catalog_config(catalog, apps)

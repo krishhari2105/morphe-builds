@@ -91,6 +91,10 @@ class PatchingTests(unittest.TestCase):
         self.assertNotIn("--striplibs=arm64-v8a", command)
         self.assertIn("--unsigned", command)
 
+    def test_forces_full_resource_encode_before_starting_morphe(self):
+        command, _, _, _ = self.run_patch(False)
+        self.assertEqual(command[:3], ["java", "-Dmorphe.patcher.fullResourceEncode=true", "-jar"])
+
     def test_morphe_process_does_not_receive_tokens_or_signing_secrets(self):
         with patch.dict(
             os.environ,

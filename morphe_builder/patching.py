@@ -105,16 +105,20 @@ def patch_unsigned(
     strip_to_arm64: bool,
 ) -> tuple[ApkInfo, str]:
     enable, disable = resolve_patch_selection(config, source.key, app_key)
-    command = [
-        "java",
-        "-jar",
-        str(tools.cli_path),
-        "patch",
-        "-o",
-        str(output_path),
-        "--result-file",
-        str(result_path),
-    ]
+    command = ["java"]
+    if config.tools.force_full_resource_encode:
+        command.append("-Dmorphe.patcher.fullResourceEncode=true")
+    command.extend(
+        [
+            "-jar",
+            str(tools.cli_path),
+            "patch",
+            "-o",
+            str(output_path),
+            "--result-file",
+            str(result_path),
+        ]
+    )
     for patch in enable:
         command.extend(["-e", patch])
     for patch in disable:

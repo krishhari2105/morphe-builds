@@ -34,6 +34,7 @@ class SourceConfig:
 @dataclass(frozen=True)
 class ToolConfig:
     android_build_tools: str
+    force_full_resource_encode: bool
 
 
 @dataclass(frozen=True)

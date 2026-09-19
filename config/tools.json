@@ -1,4 +1,5 @@
 {
   "schema_version": 1,
-  "android_build_tools": "35.0.0"
+  "android_build_tools": "35.0.0",
+  "force_full_resource_encode": true
 }

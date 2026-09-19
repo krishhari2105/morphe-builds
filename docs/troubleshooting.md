@@ -6,6 +6,12 @@ Symptoms include HTTP 403/429, `Just a moment`, CAPTCHA/Cloudflare text, HTML in
 
 Open the app/version on APKMirror, proceed through its normal download UI, copy the final direct link, and rerun with `base_urls` JSON. Do not add CAPTCHA-bypass code or aggressive retry loops.
 
+## Resource table validation fails after patching
+
+If Morphe reports a successful patch but `aapt` rejects the output with an invalid resource reference (for example, an `android:icon` error), do not bypass APK validation or publish the APK. `config/tools.json` enables `force_full_resource_encode`, which passes Morphe Patcher's documented full-resource-encoding JVM property and avoids the incremental resource-table encoder regression.
+
+Keep this setting enabled until a newer Morphe Patcher release has been verified against the newest compatible app version. It preserves the newest app and patch bundle; it only trades some patching speed for a valid resource table.
+
 ## No compatible versions
 
 Run:
