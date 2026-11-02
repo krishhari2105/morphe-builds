@@ -51,9 +51,11 @@ class PatchingTests(unittest.TestCase):
             cli_sha256="cli-sha",
         )
 
-    def run_patch(self, strip):
-        with tempfile.TemporaryDirectory() as temp:
+    def run_patch(self, strip, *, relative_input=False):
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as temp:
             root = Path(temp)
+            if relative_input:
+                root = root.relative_to(Path.cwd())
             source = root / "source.apkm"
             source.write_bytes(b"original-source")
             before = source.read_bytes()
@@ -61,6 +63,13 @@ class PatchingTests(unittest.TestCase):
             result_file = root / "result.json"
 
             def fake_run(command, **kwargs):
+                # Morphe v2 stages bundles with a symlink. Relative targets are
+                # resolved from the link's parent, not the builder's cwd.
+                cli_workspace = (root / "morphe-data" / "tmp" / "patching-session").resolve()
+                cli_workspace.mkdir(parents=True)
+                staged_target = cli_workspace / command[-1]
+                if not staged_target.is_file() or staged_target.read_bytes() != b"original-source":
+                    return SimpleNamespace(returncode=1)
                 output.write_bytes(b"patched")
                 return SimpleNamespace(returncode=0)
 
@@ -85,6 +94,11 @@ class PatchingTests(unittest.TestCase):
         self.assertIn("--striplibs=arm64-v8a", command)
         self.assertTrue(command[-1].endswith("source.apkm"))
         self.assertEqual(before, after)
+
+    def test_relative_bundle_survives_cli_workspace_staging(self):
+        _, before, after, _ = self.run_patch(False, relative_input=True)
+        self.assertEqual(before, b"original-source")
+        self.assertEqual(after, b"original-source")
 
     def test_arm64_only_omits_striplibs(self):
         command, _, _, _ = self.run_patch(False)

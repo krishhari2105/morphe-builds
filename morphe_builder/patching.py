@@ -127,7 +127,9 @@ def patch_unsigned(
     command.append("--unsigned")
     if strip_to_arm64:
         command.append("--striplibs=arm64-v8a")
-    command.append(str(source_path))
+    # Morphe stages bundle inputs as symlinks in its own temporary directory.
+    # A relative target would resolve there instead of from the builder's cwd.
+    command.append(str(source_path.resolve()))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_path.parent.mkdir(parents=True, exist_ok=True)
