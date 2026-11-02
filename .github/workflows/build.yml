@@ -100,6 +100,7 @@ jobs:
         run: rm -f morphe.keystore
       - name: Prepare unsigned ${{ matrix.source }} build
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPS: ${{ inputs.apps || 'all' }}
           VERSION_OVERRIDES: ${{ inputs.version_overrides || '{}' }}
           BASE_URLS: ${{ inputs.base_urls || '{}' }}
