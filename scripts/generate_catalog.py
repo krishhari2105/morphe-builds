@@ -18,6 +18,7 @@ def request_json(url: str, token: str) -> Any:
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "morphe-builds-catalog",
         },
     )
     with urlopen(request, timeout=30) as response:
@@ -25,13 +26,14 @@ def request_json(url: str, token: str) -> Any:
 
 
 def download_json(url: str, token: str) -> dict[str, Any]:
-    request = Request(
-        url,
-        headers={
-            "Accept": "application/octet-stream",
-            "Authorization": f"Bearer {token}",
-        },
-    )
+    headers = {
+        "User-Agent": "morphe-builds-catalog",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if "api.github.com" in url:
+        headers["Accept"] = "application/octet-stream"
+        headers["Authorization"] = f"Bearer {token}"
+    request = Request(url, headers=headers)
     with urlopen(request, timeout=30) as response:
         payload = json.load(response)
     if not isinstance(payload, dict):
@@ -59,8 +61,9 @@ def main() -> int:
         manifest_asset = assets.get("build-manifest.json")
         if not manifest_asset:
             continue
+        manifest_url = manifest_asset.get("url") or manifest_asset["browser_download_url"]
         try:
-            manifest = download_json(manifest_asset["browser_download_url"], token)
+            manifest = download_json(manifest_url, token)
         except Exception as exc:
             print(f"Skipping {release.get('tag_name')}: {exc}", file=sys.stderr)
             continue
@@ -125,6 +128,10 @@ def main() -> int:
         "featured": [item["app"] for item in ordered if item["app"] in catalog["featured"]],
         "apps": ordered,
     }
+    if not ordered and any(release.get("assets") for release in (releases if isinstance(releases, list) else [])):
+        print("Error: No apps could be resolved from releases, refusing to deploy empty catalog", file=sys.stderr)
+        return 1
+
     site = ROOT / "site"
     site.mkdir(exist_ok=True)
     (site / "catalog.json").write_text(json.dumps(output, indent=2, sort_keys=True) + "\n", encoding="utf-8")

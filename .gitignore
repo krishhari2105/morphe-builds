@@ -15,3 +15,4 @@ temp_analysis_extract/
 signing-keystore.bks
 .env
 .claude/
+site/catalog.json
