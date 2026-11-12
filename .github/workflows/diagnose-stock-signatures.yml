@@ -1,0 +1,69 @@
+name: Diagnose stock APK signatures
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signatures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: zulu
+          java-version: "21"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - name: Install Android build tools
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0"
+      - name: Inspect original apksigner output without bypassing trust checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -I - <<'PY'
+          import os
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from morphe_builder.acquisition import rename_detected
+          from morphe_builder.android import AndroidTools
+          from morphe_builder.bundles import _extract_apks_for_inspection
+          from morphe_builder.config import load_config
+          from morphe_builder.http import HttpClient
+          from morphe_builder.stock_sources import StockSources
+          http = HttpClient(token=os.environ.get("GITHUB_TOKEN"))
+          sources = StockSources(http)
+          android = AndroidTools("35.0.0")
+          config = load_config()
+          for key, version in [("youtube", "21.30.216"), ("yt-music", "9.30.53"), ("reddit", "2026.40.0")]:
+              with tempfile.TemporaryDirectory(prefix="stock-signature-") as temp:
+                  root = Path(temp)
+                  candidate = next(sources.iter_candidates("github_mirror", config.apps[key], version))
+                  result = http.download(candidate.url, root / "source.bin", expected_sha256=candidate.sha256)
+                  source = rename_detected(result.path)
+                  if source.suffix == ".apk":
+                      paths = [source]
+                  else:
+                      extracted = root / "inspection"
+                      extracted.mkdir()
+                      paths = _extract_apks_for_inspection(source, extracted)
+                  print(f"::group::{key} {version}: original apksigner output", flush=True)
+                  for path in paths[:2]:
+                      result = subprocess.run([str(android.apksigner), "verify", "--verbose", "--print-certs", str(path)], capture_output=True, text=True)
+                      print(path.name, "exit", result.returncode, flush=True)
+                      print(result.stdout, flush=True)
+                      print(result.stderr, flush=True)
+                      if result.returncode:
+                          raise RuntimeError("Stock signature verification failed")
+                  print("::endgroup::", flush=True)
+          PY
