@@ -143,7 +143,7 @@ class ApkMirrorResolver:
                 result.append(Link(absolute, link.text, link.element_id, link.title))
         return result
 
-    def iter_latest_candidates(self, app: AppConfig) -> Iterator[tuple[str, str, str]]:
+    def _latest_release_links(self, app: AppConfig) -> tuple[str, list[tuple[str, Link]]]:
         listing_html, listing_url = self._html(app.apkmirror_url)
         release_candidates: list[tuple[str, Link]] = []
         seen: set[str] = set()
@@ -168,6 +168,15 @@ class ApkMirrorResolver:
             release_candidates.append((match.group(1).rstrip("-._"), link))
 
         release_candidates.sort(key=lambda item: version_key(item[0]), reverse=True)
+        return listing_url, release_candidates
+
+    def discover_versions(self, app: AppConfig) -> list[str]:
+        """Read stable listing metadata without requiring a usable download link."""
+        _, releases = self._latest_release_links(app)
+        return [version for version, _ in releases[: getattr(self, "max_release_attempts", 2)]]
+
+    def iter_latest_candidates(self, app: AppConfig) -> Iterator[tuple[str, str, str]]:
+        listing_url, release_candidates = self._latest_release_links(app)
         errors: list[str] = []
         yielded_any = False
         release_limit = getattr(self, "max_release_attempts", 2)

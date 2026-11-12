@@ -30,6 +30,8 @@ class CachedBase:
     final_url: str | None = None
     requested_version: str | None = None
     resolution_mode: str = "exact"
+    provider: str | None = None
+    signing_certificate_sha256: str | None = None
 
 
 class BaseCache:
@@ -58,6 +60,8 @@ class BaseCache:
                 final_url=raw.get("final_url"),
                 requested_version=raw.get("requested_version"),
                 resolution_mode=str(raw.get("resolution_mode", "exact")),
+                provider=raw.get("provider"),
+                signing_certificate_sha256=raw.get("signing_certificate_sha256"),
             )
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
             return None
@@ -96,6 +100,8 @@ class BaseCache:
         final_url: str | None = None,
         requested_version: str | None = None,
         resolution_mode: str = "exact",
+        provider: str | None = None,
+        signing_certificate_sha256: str | None = None,
     ) -> CachedBase:
         digest = sha256_file(source_path)
         extension = detect_format(source_path)
@@ -115,6 +121,8 @@ class BaseCache:
             "final_url": final_url,
             "requested_version": requested_version or version_name,
             "resolution_mode": resolution_mode,
+            "provider": provider,
+            "signing_certificate_sha256": signing_certificate_sha256,
         }
         manifest_path = self.root / f"{app.key}-{slug(version_name)}-{digest[:12]}.json"
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -129,6 +137,8 @@ class BaseCache:
             final_url=final_url,
             requested_version=requested_version or version_name,
             resolution_mode=resolution_mode,
+            provider=provider,
+            signing_certificate_sha256=signing_certificate_sha256,
         )
 
 

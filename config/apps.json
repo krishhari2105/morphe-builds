@@ -5,6 +5,19 @@
       "name": "YouTube",
       "package": "com.google.android.youtube",
       "apkmirror_url": "https://www.apkmirror.com/apk/google-inc/youtube/",
+      "download_sources": {
+        "github_mirror": ["https://github.com/nullcpy/apks"],
+        "archive": ["https://archive.org/download/jhc-apks/apks/{package}"],
+        "uptodown": ["https://youtube.en.uptodown.com/android"],
+        "apkpure": ["https://apkpure.com/youtube/com.google.android.youtube"],
+        "apkcombo": ["https://apkcombo.com/youtube/com.google.android.youtube/"]
+      },
+      "signing_cert_source": "https://www.youtube.com/.well-known/assetlinks.json",
+      "signing_cert_sha256": [
+        "3d7a1223019aa39d9ea0e3436ab7c0896bfb4fb679f4de5fe7c23f326c8f994a",
+        "7fd2cea30c3a6022eb29419ce8f6f92ce8a4bd35b0cc879ed3cca6cbf5e9992d",
+        "5aad2bee6db95d17e05a08d7d1e64c10a1511879154483916b6ae6c7fd9cb0c6"
+      ],
       "formats": ["apk", "apkm", "apks", "xapk"],
       "prefer": ["arm64-v8a", "universal"],
       "target_abi": "arm64-v8a",
@@ -14,6 +27,18 @@
       "name": "YouTube Music",
       "package": "com.google.android.apps.youtube.music",
       "apkmirror_url": "https://www.apkmirror.com/apk/google-inc/youtube-music/",
+      "download_sources": {
+        "github_mirror": ["https://github.com/nullcpy/apks"],
+        "archive": ["https://archive.org/download/jhc-apks/apks/{package}"],
+        "uptodown": ["https://youtube-music.en.uptodown.com/android"],
+        "apkpure": ["https://apkpure.com/youtube-music/com.google.android.apps.youtube.music"],
+        "apkcombo": ["https://apkcombo.com/youtube-music/com.google.android.apps.youtube.music/"]
+      },
+      "signing_cert_source": "https://music.youtube.com/.well-known/assetlinks.json",
+      "signing_cert_sha256": [
+        "ca7cdf89092b2c185fd34135c27af890364890063d88474780df65a5685cd311",
+        "a2a1ad7ba7f41dfca4514e2afeb90691719af6d0fdbed4b09bbf0ed897701ceb"
+      ],
       "formats": ["apk", "apkm", "apks", "xapk"],
       "prefer": ["arm64-v8a", "universal"],
       "target_abi": "arm64-v8a",
@@ -23,6 +48,15 @@
       "name": "Reddit",
       "package": "com.reddit.frontpage",
       "apkmirror_url": "https://www.apkmirror.com/apk/redditinc/reddit/",
+      "download_sources": {
+        "github_mirror": ["https://github.com/nullcpy/apks"],
+        "archive": ["https://archive.org/download/jhc-apks/apks/{package}"],
+        "uptodown": ["https://reddit-official-app.en.uptodown.com/android"],
+        "apkpure": ["https://apkpure.com/reddit/com.reddit.frontpage"],
+        "apkcombo": ["https://apkcombo.com/reddit/com.reddit.frontpage/"]
+      },
+      "signing_cert_source": "https://www.reddit.com/.well-known/assetlinks.json",
+      "signing_cert_sha256": ["970b91143813b4c9d5f3634f672c9fcaa5621b4efaaedafd6c235cbbb869736f"],
       "formats": ["apk", "apkm", "apks", "xapk"],
       "prefer": ["arm64-v8a", "universal"],
       "target_abi": "arm64-v8a"
@@ -31,6 +65,19 @@
       "name": "X (Twitter)",
       "package": "com.twitter.android",
       "apkmirror_url": "https://www.apkmirror.com/apk/x-corp/twitter/",
+      "download_sources": {
+        "github_mirror": ["https://github.com/nullcpy/apks"],
+        "archive": ["https://archive.org/download/jhc-apks/apks/{package}"],
+        "uptodown": ["https://twitter.en.uptodown.com/android"],
+        "apkpure": ["https://apkpure.com/x/com.twitter.android"],
+        "apkcombo": ["https://apkcombo.com/x/com.twitter.android/"]
+      },
+      "signing_cert_source": "https://x.com/.well-known/assetlinks.json",
+      "signing_cert_sha256": [
+        "0fd9a0cfb07b65950997b4eaebdc53931392391aa406538a3b04073bc2ce2fe9",
+        "f907e3bb21d6319cca340780cc63b5153a92971f85d38a4882e6a57a41ac3384",
+        "99226eed9b9eee146cb161492bcf91a54d97ff0454328d93b864f31f6c8dd70a"
+      ],
       "formats": ["apk", "apkm", "apks", "xapk"],
       "prefer": ["arm64-v8a", "universal"],
       "target_abi": "arm64-v8a"
@@ -39,6 +86,15 @@
       "name": "Spotify",
       "package": "com.spotify.music",
       "apkmirror_url": "https://www.apkmirror.com/apk/spotify-ab/spotify-music-podcasts/",
+      "download_sources": {
+        "github_mirror": ["https://github.com/nullcpy/apks"],
+        "archive": ["https://archive.org/download/jhc-apks/apks/{package}"],
+        "uptodown": ["https://spotify.en.uptodown.com/android"],
+        "apkpure": ["https://apkpure.com/spotify-music-and-podcasts/com.spotify.music"],
+        "apkcombo": ["https://apkcombo.com/spotify/com.spotify.music/"]
+      },
+      "signing_cert_source": "https://www.spotify.com/.well-known/assetlinks.json",
+      "signing_cert_sha256": ["6505b181933344f93893d586e399b94616183f04349cb572a9e81a3335e28ffd"],
       "formats": ["apk", "apkm", "apks", "xapk"],
       "prefer": ["arm64-v8a", "universal"],
       "target_abi": "arm64-v8a"
@@ -47,6 +103,18 @@
       "name": "Google Photos",
       "package": "com.google.android.apps.photos",
       "apkmirror_url": "https://www.apkmirror.com/apk/google-inc/photos/",
+      "download_sources": {
+        "github_mirror": ["https://github.com/nullcpy/apks"],
+        "archive": ["https://archive.org/download/jhc-apks/apks/{package}"],
+        "uptodown": ["https://google-photos.en.uptodown.com/android"],
+        "apkpure": ["https://apkpure.com/google-photos/com.google.android.apps.photos"],
+        "apkcombo": ["https://apkcombo.com/google-photos/com.google.android.apps.photos/"]
+      },
+      "signing_cert_source": "https://photos.google.com/.well-known/assetlinks.json",
+      "signing_cert_sha256": [
+        "3d7a1223019aa39d9ea0e3436ab7c0896bfb4fb679f4de5fe7c23f326c8f994a",
+        "7fd2cea30c3a6022eb29419ce8f6f92ce8a4bd35b0cc879ed3cca6cbf5e9992d"
+      ],
       "formats": ["apk", "apkm", "apks", "xapk"],
       "prefer": ["arm64-v8a", "universal"],
       "target_abi": "arm64-v8a",
@@ -56,6 +124,15 @@
       "name": "Proton VPN",
       "package": "ch.protonvpn.android",
       "apkmirror_url": "https://www.apkmirror.com/apk/proton-technologies-ag/protonvpn-secure-and-free-vpn/",
+      "download_sources": {
+        "github_mirror": ["https://github.com/nullcpy/apks"],
+        "github": ["https://github.com/ProtonVPN/android-app"],
+        "uptodown": ["https://protonvpn.en.uptodown.com/android"],
+        "apkpure": ["https://apkpure.com/proton-vpn/ch.protonvpn.android"],
+        "apkcombo": ["https://apkcombo.com/proton-vpn/ch.protonvpn.android/"]
+      },
+      "signing_cert_source": "https://proton.me/.well-known/assetlinks.json",
+      "signing_cert_sha256": ["dcc9439ec1a6c6a8d0203f3423ee42bcc8b970628e53cb73a0393f398dd5b853"],
       "formats": ["apk", "apkm", "apks", "xapk"],
       "prefer": ["arm64-v8a", "universal"],
       "target_abi": "arm64-v8a"

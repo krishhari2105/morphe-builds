@@ -18,6 +18,12 @@ class DownloadError(RuntimeError):
     pass
 
 
+class SourceRetry(Retry):
+    # Don't sleep/retry on a provider's rate limit. Let acquisition switch sources
+    # and suppress that provider for the rest of this preparation instead.
+    RETRY_AFTER_STATUS_CODES = frozenset({413, 503})
+
+
 class HttpClient:
     def __init__(
         self,
@@ -30,7 +36,7 @@ class HttpClient:
         self.timeout = (connect_timeout, read_timeout)
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": user_agent, "Accept": "application/vnd.github+json"})
-        retry = Retry(
+        retry = SourceRetry(
             total=3,
             connect=3,
             read=2,

@@ -4,7 +4,19 @@
 
 Symptoms include HTTP 403/429, `Just a moment`, CAPTCHA/Cloudflare text, HTML instead of an APK, or no recognized variant/download link.
 
-Open the app/version on APKMirror, proceed through its normal download UI, copy the final direct link, and rerun with `base_urls` JSON. Do not add CAPTCHA-bypass code or aggressive retry loops.
+The builder now tries configured stock mirrors and Archive.org before APKMirror, then public Uptodown/APKPure/APKCombo links. A blocked or rate-limited provider does not stop the other providers. Observed 403/429/challenges suppress further attempts to that provider during the preparation; rate limits are not retried automatically. Other transient connection/server failures still have bounded transport retries.
+
+A browser can download successfully while Actions receives 403 because network IP reputation and browser/session checks differ. A User-Agent header cannot guarantee access. Do not add CAPTCHA-bypass code, copied browser cookies, or aggressive retry loops.
+
+If every source fails, use `base_url` for one selected app, or `base_urls` JSON for several. Supply a direct HTTPS URL to an original publisher-signed APK/bundle from a source you trust; it need not be APKMirror. A copied APKMirror link can still expire or be blocked on the runner. All manual inputs must pass publisher-certificate, package, version, archive, and ABI validation.
+
+## Untrusted input publisher certificate
+
+This is different from the signing certificate used for the patched output. The builder rejects an unsigned source, a source signed by an unknown publisher, or bundle splits with different signers. Review the configured `signing_cert_source` official publisher evidence and the source file before changing `signing_cert_sha256`. Never disable validation or copy a certificate fingerprint from the same untrusted mirror merely to make a build pass.
+
+## Latest stable version cannot be discovered
+
+For a patch reporting `Any`, the builder uses official GitHub releases or public store metadata to discover stable versions, then uses the full fallback chain for those exact versions. If all discovery sources are blocked, it fails rather than presenting an old cache entry or the newest mirror upload as upstream's latest. Use an explicit supported `version_overrides` value or an authenticated manual source URL.
 
 ## Resource table validation fails after patching
 
