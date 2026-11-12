@@ -119,8 +119,29 @@ class AndroidTools:
         )
         if result.returncode != 0:
             raise AndroidToolError(f"Signature verification failed: {result.stdout}\n{result.stderr}")
-        match = re.search(r"Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)", result.stdout)
-        fingerprint = match.group(1).lower() if match else ""
+        signer_count = re.search(r"^Number of signers:\s*(\d+)\s*$", result.stdout, re.MULTILINE)
+        if not signer_count or int(signer_count.group(1)) != 1:
+            raise AndroidToolError("Expected exactly one verified application signer lineage")
+        numbered = re.search(
+            r"^Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]{64})\s*$",
+            result.stdout,
+            re.MULTILINE,
+        )
+        platform_signers: list[tuple[str, str]] = re.findall(
+            r"^Signer \(minSdkVersion=(\d+)(?: \(dev release=true\))?, maxSdkVersion=\d+\) "
+            r"certificate SHA-256 digest:\s*([0-9a-fA-F]{64})\s*$",
+            result.stdout,
+            re.MULTILINE,
+        )
+        # apksigner's successful full verification validates cross-SDK proof of
+        # rotation. Pin the oldest-platform signer in that verified lineage,
+        # not the unrelated source-stamp signer or the public-key digest.
+        if platform_signers:
+            fingerprint = min(platform_signers, key=lambda signer: int(signer[0]))[1].lower()
+        elif numbered:
+            fingerprint = numbered.group(1).lower()
+        else:
+            raise AndroidToolError("No recognized application signing certificate in apksigner output")
         if expected_fingerprint:
             normalized = re.sub(r"[^0-9a-fA-F]", "", expected_fingerprint).lower()
             if not fingerprint or fingerprint != normalized:
