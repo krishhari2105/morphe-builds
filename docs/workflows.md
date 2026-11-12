@@ -42,15 +42,16 @@ YouTube and YouTube Music are featured by default. To show another app, set its 
 
 The resolved patch MPP is queried with `list-versions`; those concrete compatible versions are normalized and attempted newest-first. An explicit `version_overrides` value is treated as one exact request and is never silently replaced by another version.
 
-When the patch source reports `Any`, the builder means “newest valid release,” not an arbitrary APK:
+An explicit manual URL takes precedence and must pass the same input authentication and compatibility checks. Otherwise, **for each version newest-first**, the builder attempts: exact validated Actions cache → configured GitHub stock mirror → direct URL → official GitHub releases → Archive.org → APKMirror → Uptodown → APKPure → APKCombo. A missing/blocked/invalid provider falls through without changing the requested version. All providers for the newer version are exhausted before considering an older supported stable version.
 
-1. APKMirror stable release pages are ordered newest-first; prerelease pages are skipped.
-2. Each release's preferred variants are downloaded and validated for package, resolved version, archive integrity, and arm64 support.
-3. If the newest release or its variants fail, the next stable release is tried.
-4. Only after network candidates fail, the newest valid Actions-cache entry is used.
-5. A manual HTTPS URL is accepted after the same package/archive/ABI validation; with `Any`, its concrete version is recorded as the resolved version.
+When the patch source reports `Any`, the builder means “newest discoverable stable release,” not an arbitrary mirrored APK:
 
-Build manifests and cache manifests record `requested_version`, `resolved_version`, and `resolution_mode` so the selected base can be audited.
+1. Discover stable versions from the first usable upstream authority: configured official GitHub releases, APKMirror, Uptodown, APKPure, then APKCombo. Public version metadata can be used even when that store's binary download is gated.
+2. Sort that authority's bounded discovered versions newest-first, then use the same exact-version cache/provider chain above. Mirror and Archive.org inventories do not establish what upstream's latest is.
+3. Validate package, resolved version, archive integrity, arm64 support, and publisher signatures (including all bundle splits) before caching or patching.
+4. If all discovery authorities are blocked, fail with a manual-source remedy instead of silently treating a stale cache entry as latest.
+
+Build metadata records the provider, source page, final download URL, requested/resolved versions, resolution mode, input SHA-256, and publisher certificate SHA-256. Cache metadata preserves provider, final URL, requested version, resolution mode, and verified signer alongside its version name/code and file hash. Cache hits are reauthenticated against current publisher pins.
 
 The active workflow has no dependency on the old private `base-apks` repository.
 

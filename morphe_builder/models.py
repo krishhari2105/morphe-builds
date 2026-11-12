@@ -15,6 +15,8 @@ class AppConfig:
     prefer: tuple[str, ...]
     target_abi: str = "arm64-v8a"
     patched_packages: tuple[str, ...] = ()
+    download_sources: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    signing_cert_sha256: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

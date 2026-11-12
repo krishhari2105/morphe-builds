@@ -8,14 +8,15 @@ One repository for discovering compatible app versions, acquiring source APK/APK
 - Morphe stable and development release checks daily at 8:00 AM IST.
 - Exact Morphe patch and CLI release/asset resolution with SHA-256 verification.
 - Compatible-version discovery through `morphe-desktop list-versions`.
-- Best-effort APKMirror release and arm64/universal variant discovery.
+- Version-first stock acquisition through configured GitHub mirrors, direct/official GitHub sources, Archive.org, APKMirror, Uptodown, APKPure, and APKCombo.
+- Stable-only automatic version selection and input publisher-certificate verification, including every bundle split.
 - Source-isolated Actions caches for tools and validated base files, retaining two generations each. Raw bases are never public release assets.
 - Direct APKM/APKS/XAPK input to Morphe CLI. Source files are not rewritten.
 - `--striplibs=arm64-v8a` only when the source contains arm64 plus other native architectures; arm64-only and architecture-independent sources are left alone.
 - APK package/version/ABI, alignment, and signing-certificate validation.
 - Deterministic releases containing patched APKs, `build-manifest.json`, and `SHA256SUMS`.
 
-APKMirror has no supported download API and can block GitHub-hosted runners. When that happens, the workflow prints the exact `base_urls` JSON needed for a manual rerun. The automation detects challenges; it does not bypass CAPTCHA or anti-bot protections.
+APKMirror and other stores can block GitHub-hosted runners. The builder automatically switches sources for the same requested version; blocked providers are not repeatedly retried. If every source fails, the error lists the providers and shows a `base_urls` example for a manual rerun. Scraping providers remain best-effort: the automation detects challenges and does not bypass CAPTCHA or anti-bot protections. See [source configuration and publisher trust](docs/configuration.md).
 
 ## One-click build
 
@@ -33,14 +34,14 @@ Use the source-specific workflow shown under **Actions**:
 1. Open the appropriate workflow and click **Run workflow**.
 2. Choose `all` or one app from that workflow’s dropdown.
 3. Normally leave `version_overrides` and `base_urls` as `{}` and `base_url` empty.
-4. If APKMirror fails, select one app and paste its direct URL into `base_url`—no JSON is needed.
+4. If every automatic source fails, select one app and paste a trusted stock APK/bundle HTTPS URL into `base_url`—no JSON is needed.
 5. Run the workflow.
 
 Supported app keys are `youtube`, `yt-music`, `reddit`, `twitter`, `spotify`, `gphotos`, and `proton-vpn`. Supported source keys are defined in [`config/patch-sources.json`](config/patch-sources.json).
 
-### Manual APKMirror fallback
+### Manual source fallback
 
-If Actions reports that APKMirror blocked or changed its page, choose a single app and paste the final APKMirror download link directly into the `base_url` field. Single-app workflows such as Google Photos, X, and Proton VPN can keep `apps` set to `all`.
+If Actions cannot acquire the requested stock app from any configured source, choose a single app and paste a direct HTTPS APK/bundle download link into `base_url`. This can be a stock GitHub release asset, an official download, or another trusted source—not only APKMirror. Single-app workflows such as Google Photos, X, and Proton VPN can keep `apps` set to `all`. Copied APKMirror links can expire or still be blocked on the runner.
 
 For a multi-app run, use the advanced `base_urls` JSON field:
 
@@ -51,7 +52,7 @@ For a multi-app run, use the advanced `base_urls` JSON field:
 }
 ```
 
-Every manual URL is still checked for HTTPS, file integrity, package, version, and arm64 compatibility.
+Every manual URL is still checked for HTTPS, file integrity, original publisher signatures, package, version, and arm64 compatibility.
 
 ## Required GitHub Actions secrets
 

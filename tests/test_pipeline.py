@@ -17,6 +17,18 @@ class PipelineTests(unittest.TestCase):
             ["20.12.46", "20.5.1", "19.1.0"],
         )
 
+    def test_automatic_versions_exclude_prereleases(self):
+        app = self.config.apps["youtube"]
+        self.assertEqual(
+            self.builder._candidate_versions(app, ["22.0-beta", "21.0", "23.0-rc1", "24.0-preview"], None),
+            ["21.0"],
+        )
+
+    def test_only_prerelease_versions_are_not_automatic_candidates(self):
+        app = self.config.apps["youtube"]
+        with self.assertRaises(PipelineError):
+            self.builder._candidate_versions(app, ["22.0-beta"], None)
+
     def test_any_is_used_only_without_concrete_versions(self):
         app = self.config.apps["youtube"]
         self.assertEqual(self.builder._candidate_versions(app, ["Any"], None), [None])

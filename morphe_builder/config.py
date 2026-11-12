@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from .models import AppConfig, SourceConfig, ToolConfig
 
@@ -63,6 +64,29 @@ def load_config(config_dir: Path = CONFIG_DIR) -> Config:
         target_abi = str(raw.get("target_abi", "arm64-v8a"))
         if target_abi != "arm64-v8a":
             raise ConfigError(f"Unsupported target ABI for apps.{key}: {target_abi}")
+        download_sources = raw.get("download_sources", {})
+        providers = {"github_mirror", "direct", "github", "archive", "uptodown", "apkpure", "apkcombo"}
+        if not isinstance(download_sources, dict) or set(download_sources) - providers:
+            raise ConfigError(f"Invalid download provider for apps.{key}")
+        for provider, urls in download_sources.items():
+            if not isinstance(urls, list) or not all(isinstance(url, str) for url in urls):
+                raise ConfigError(f"apps.{key}.download_sources.{provider} must be an array of URLs")
+            for url in urls:
+                parsed = urlsplit(url)
+                if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+                    raise ConfigError(f"apps.{key} backup URLs must use HTTPS without credentials")
+                try:
+                    url.format(package=package, version="1.0", arch=target_abi)
+                except (KeyError, ValueError, IndexError) as exc:
+                    raise ConfigError(f"Invalid URL template for apps.{key}: {url}") from exc
+        fingerprints = raw.get("signing_cert_sha256", [])
+        if not isinstance(fingerprints, list) or not fingerprints:
+            raise ConfigError(f"apps.{key} requires trusted publisher certificate fingerprints")
+        if any(
+            not isinstance(pin, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", pin.replace(":", ""))
+            for pin in fingerprints
+        ):
+            raise ConfigError(f"Invalid publisher certificate fingerprint for apps.{key}")
         apps[key] = AppConfig(
             key=key,
             name=str(_required(raw, "name", f"apps.{key}")),
@@ -72,6 +96,8 @@ def load_config(config_dir: Path = CONFIG_DIR) -> Config:
             prefer=tuple(str(item) for item in raw.get("prefer", ["arm64-v8a", "universal"])),
             target_abi=target_abi,
             patched_packages=tuple(str(item) for item in raw.get("patched_packages", [])),
+            download_sources={provider: tuple(urls) for provider, urls in download_sources.items()},
+            signing_cert_sha256=tuple(pin.replace(":", "").lower() for pin in fingerprints),
         )
 
     if not apps:

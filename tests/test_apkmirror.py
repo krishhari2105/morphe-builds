@@ -50,6 +50,17 @@ class ApkMirrorTests(unittest.TestCase):
         self.assertEqual(candidates[0][0], "https://download.example/twitter.apk")
         self.assertEqual(attempted[0], "https://www.apkmirror.com/apk/x-corp/twitter/x-12-7-1-release-0-release/")
 
+    def test_version_discovery_keeps_newest_release_without_resolving_binary_links(self):
+        app = load_config().apps["youtube"]
+        resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)
+        resolver._html = lambda url, referer=None: (
+            '<a href="/apk/google-inc/youtube/youtube-22-0-release/">22.0</a>'
+            '<a href="/apk/google-inc/youtube/youtube-21-0-release/">21.0</a>',
+            url,
+        )
+        self.assertTrue(hasattr(resolver, "discover_versions"), "Metadata-only discovery missing")
+        self.assertEqual(resolver.discover_versions(app), ["22.0", "21.0"])
+
     def test_latest_resolution_stops_after_first_candidate(self):
         app = load_config().apps["youtube"]
         resolver = ApkMirrorResolver.__new__(ApkMirrorResolver)

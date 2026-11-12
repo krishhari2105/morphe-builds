@@ -8,23 +8,17 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .acquisition import (
-    AcquisitionError,
-    BaseCache,
-    download_apkmirror_candidates,
-    download_apkmirror_latest_candidates,
-    download_manual,
-    rename_detected,
-)
+from .acquisition import BaseCache
 from .android import AndroidTools
-from .apkmirror import ApkMirrorRateLimited, ApkMirrorResolver
-from .bundles import inspect_source
+from .apkmirror import ApkMirrorResolver
+from .base_acquisition import BaseAcquirer
 from .config import Config
 from .github import GitHubClient
 from .http import HttpClient
 from .manifest import build_tag, sha256_file, slug, write_checksums, write_manifest
 from .models import ApkInfo, AppBuildResult, AppConfig, ReleaseInfo, SourceConfig
 from .patching import list_versions, patch_unsigned, prepare_keystore, resolve_tools
+from .stock_sources import StockSources, is_stable_version
 from .versions import normalize_version, version_key
 
 
@@ -36,10 +30,11 @@ class Builder:
     def __init__(self, config: Config, github: GitHubClient | None = None) -> None:
         self.config = config
         self.github = github or GitHubClient()
-        self.http = HttpClient()
+        self.http = HttpClient(token=os.environ.get("GITHUB_TOKEN"))
         self.apkmirror = ApkMirrorResolver()
         self.android = AndroidTools(config.tools.android_build_tools)
         self.cache = BaseCache(Path(os.environ.get("BASE_CACHE_DIR", ".cache/bases")))
+        self.acquirer = BaseAcquirer(self.http, self.apkmirror, self.android, self.cache, StockSources(self.http))
 
     def prepare(
         self,
@@ -116,7 +111,7 @@ class Builder:
                     "format": source_path.suffix.lower().lstrip("."),
                     "native_abis": list(native_abis),
                     "striplibs": ["arm64-v8a"] if strip_to_arm64 else [],
-                    "source_page": base_meta.get("source_page"),
+                    **base_meta,
                 }
                 base_plan.append(base_entry)
                 results.append(
@@ -129,6 +124,7 @@ class Builder:
                         output_path=str(unsigned_path),
                         output_sha256=output_sha256,
                         details={
+                            "base_acquisition": base_meta,
                             "output_package": output_info.package,
                             "native_abis": list(output_info.native_code),
                             "patch_result": str(result_path),
@@ -303,201 +299,7 @@ class Builder:
         manual_url: str | None,
         app_work_dir: Path,
     ) -> tuple[Path, ApkInfo, tuple[str, ...], bool, dict[str, Any]]:
-        app_work_dir.mkdir(parents=True, exist_ok=True)
-        errors: list[str] = []
-
-        if manual_url:
-            temp_path = app_work_dir / "manual-base-download.bin"
-            try:
-                download_manual(self.http, manual_url, temp_path)
-                detected_path = rename_detected(temp_path)
-                info, native_abis, strip = inspect_source(
-                    detected_path,
-                    self.android,
-                    expected_package=app.package,
-                    expected_version=None,
-                    target_abi=app.target_abi,
-                )
-                allowed_versions = {normalize_version(value) for value in candidate_versions if value}
-                if allowed_versions and normalize_version(info.version_name) not in allowed_versions:
-                    raise AcquisitionError(
-                        f"Manual source version {info.version_name} is not compatible; "
-                        f"expected one of {sorted(allowed_versions)}"
-                    )
-                cached = self.cache.store(
-                    app,
-                    detected_path,
-                    version_name=info.version_name,
-                    version_code=info.version_code,
-                    source_page=None,
-                )
-                return (
-                    cached.path,
-                    info,
-                    native_abis,
-                    strip,
-                    {
-                        "acquisition": "manual-url",
-                        "source_page": None,
-                    },
-                )
-            except Exception as exc:
-                errors.append(f"manual-url: {exc}")
-                temp_path.unlink(missing_ok=True)
-
-        for candidate in candidate_versions:
-            if candidate is None:
-                rate_limit_error: ApkMirrorRateLimited | None = None
-                try:
-                    downloads = download_apkmirror_latest_candidates(
-                        self.apkmirror, app, app_work_dir / "latest-variants"
-                    )
-                    latest_errors: list[str] = []
-                    for result, source_page, resolved_version in downloads:
-                        try:
-                            detected_path = rename_detected(result.path)
-                            info, native_abis, strip = inspect_source(
-                                detected_path,
-                                self.android,
-                                expected_package=app.package,
-                                expected_version=resolved_version,
-                                target_abi=app.target_abi,
-                            )
-                            cached = self.cache.store(
-                                app,
-                                detected_path,
-                                version_name=info.version_name,
-                                version_code=info.version_code,
-                                source_page=source_page,
-                                final_url=result.final_url,
-                                requested_version="Any",
-                                resolution_mode="latest",
-                            )
-                            return (
-                                cached.path,
-                                info,
-                                native_abis,
-                                strip,
-                                {
-                                    "acquisition": "apkmirror-latest",
-                                    "source_page": source_page,
-                                    "final_url": result.final_url,
-                                    "requested_version": "Any",
-                                    "resolved_version": info.version_name,
-                                },
-                            )
-                        except Exception as exc:
-                            latest_errors.append(str(exc))
-                            result.path.unlink(missing_ok=True)
-                    errors.append(f"apkmirror latest: {'; '.join(latest_errors[:4])}")
-                except ApkMirrorRateLimited as exc:
-                    rate_limit_error = exc
-                    errors.append(f"apkmirror latest: {exc}")
-                except Exception as exc:
-                    errors.append(f"apkmirror latest: {exc}")
-
-                latest_cached = self.cache.find_latest(app)
-                if latest_cached:
-                    try:
-                        info, native_abis, strip = inspect_source(
-                            latest_cached.path,
-                            self.android,
-                            expected_package=app.package,
-                            expected_version=latest_cached.version_name,
-                            target_abi=app.target_abi,
-                        )
-                        return (
-                            latest_cached.path,
-                            info,
-                            native_abis,
-                            strip,
-                            {
-                                "acquisition": "actions-cache-latest-fallback",
-                                "source_page": latest_cached.source_page,
-                                "final_url": latest_cached.final_url,
-                                "requested_version": "Any",
-                                "resolved_version": info.version_name,
-                            },
-                        )
-                    except Exception as exc:
-                        errors.append(f"cache latest fallback: {exc}")
-                if rate_limit_error:
-                    raise AcquisitionError(str(rate_limit_error)) from rate_limit_error
-                continue
-
-            exact_cached = self.cache.find(app, candidate)
-            if exact_cached:
-                try:
-                    info, native_abis, strip = inspect_source(
-                        exact_cached.path,
-                        self.android,
-                        expected_package=app.package,
-                        expected_version=candidate,
-                        target_abi=app.target_abi,
-                    )
-                    return (
-                        exact_cached.path,
-                        info,
-                        native_abis,
-                        strip,
-                        {
-                            "acquisition": "actions-cache",
-                            "source_page": exact_cached.source_page,
-                        },
-                    )
-                except Exception as exc:
-                    errors.append(f"cache {candidate or 'latest'}: {exc}")
-
-            attempts: list[tuple[str, Any]] = [("apkmirror", None)]
-
-            for method, _ in attempts:
-                temp_path = app_work_dir / "base-download.bin"
-                temp_path.unlink(missing_ok=True)
-                try:
-                    downloads = download_apkmirror_candidates(self.apkmirror, app, candidate, app_work_dir / "variants")
-                    variant_errors: list[str] = []
-                    for result, source_page, resolved_version in downloads:
-                        try:
-                            detected_path = rename_detected(result.path)
-                            info, native_abis, strip = inspect_source(
-                                detected_path,
-                                self.android,
-                                expected_package=app.package,
-                                expected_version=resolved_version,
-                                target_abi=app.target_abi,
-                            )
-                            cached = self.cache.store(
-                                app,
-                                detected_path,
-                                version_name=info.version_name,
-                                version_code=info.version_code,
-                                source_page=source_page,
-                            )
-                            return (
-                                cached.path,
-                                info,
-                                native_abis,
-                                strip,
-                                {
-                                    "acquisition": method,
-                                    "source_page": source_page,
-                                },
-                            )
-                        except Exception as exc:
-                            variant_errors.append(str(exc))
-                            result.path.unlink(missing_ok=True)
-                    errors.append(f"{method} {candidate or 'latest'}: {'; '.join(variant_errors[:4])}")
-                except ApkMirrorRateLimited as exc:
-                    raise AcquisitionError(str(exc)) from exc
-                except Exception as exc:
-                    errors.append(f"{method} {candidate or 'latest'}: {exc}")
-                temp_path.unlink(missing_ok=True)
-
-        detail = "; ".join(errors[-8:])
-        raise AcquisitionError(
-            f"Could not acquire a validated base for {app.key}. {detail}. "
-            f'Rerun with base_urls JSON such as {{"{app.key}": "https://..."}}'
-        )
+        return self.acquirer.acquire(app, candidate_versions, manual_url, app_work_dir)
 
     @staticmethod
     def _merge_base_url(
@@ -517,7 +319,7 @@ class Builder:
     def _candidate_versions(app: AppConfig, compatible: list[str], override: str | None) -> list[str | None]:
         if override and override.lower() != "auto":
             return [normalize_version(override)]
-        numeric: set[str] = {normalize_version(value) for value in compatible if value.lower() != "any"}
+        numeric: set[str] = {normalize_version(value) for value in compatible if is_stable_version(value)}
         if numeric:
             sorted_numeric: list[str | None] = [*sorted(numeric, key=version_key, reverse=True)]
             return sorted_numeric

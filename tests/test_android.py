@@ -5,10 +5,51 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from morphe_builder.android import AndroidTools
+from morphe_builder.android import AndroidToolError, AndroidTools
 
 
 class AndroidTests(unittest.TestCase):
+    def verify_output(self, output, expected=None, returncode=0):
+        tools = AndroidTools.__new__(AndroidTools)
+        tools.apksigner = Path("apksigner")
+        with patch(
+            "morphe_builder.android.subprocess.run",
+            return_value=SimpleNamespace(returncode=returncode, stdout=output, stderr=""),
+        ):
+            return tools.verify_signature(Path("source.apk"), expected)
+
+    def test_signature_parser_handles_sdk_targeted_key_rotation(self):
+        # Observed SDK 35 output for Google APKs: v3.1 current key first,
+        # followed by the older-platform key anchoring the verified lineage.
+        output = (
+            "Number of signers: 1\n"
+            "Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: " + "b" * 64 + "\n"
+            "Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: " + "a" * 64 + "\n"
+            "Source Stamp Signer certificate SHA-256 digest: " + "c" * 64 + "\n"
+        )
+        self.assertEqual(self.verify_output(output, "a" * 64), "a" * 64)
+
+    def test_signature_parser_retains_numbered_signer_support(self):
+        output = "Number of signers: 1\nSigner #1 certificate SHA-256 digest: " + "A" * 64 + "\n"
+        self.assertEqual(self.verify_output(output, "a" * 64), "a" * 64)
+
+    def test_signature_parser_rejects_unrecognized_success_output(self):
+        with self.assertRaises(AndroidToolError):
+            self.verify_output("Number of signers: 1\nSource Stamp Signer certificate SHA-256 digest: " + "a" * 64)
+
+    def test_signature_parser_rejects_multiple_independent_signers(self):
+        output = (
+            "Number of signers: 2\nSigner #1 certificate SHA-256 digest: " + "a" * 64 + "\n"
+            "Signer #2 certificate SHA-256 digest: " + "b" * 64 + "\n"
+        )
+        with self.assertRaises(AndroidToolError):
+            self.verify_output(output, "a" * 64)
+
+    def test_invalid_rotation_proof_is_not_accepted_even_with_pinned_digest(self):
+        output = "Number of signers: 1\nSigner #1 certificate SHA-256 digest: " + "a" * 64 + "\n"
+        with self.assertRaises(AndroidToolError):
+            self.verify_output(output, "a" * 64, returncode=1)
+
     def test_align_and_sign_keeps_passwords_out_of_command_arguments(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

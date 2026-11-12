@@ -115,6 +115,31 @@ def inspect_bundle(
     )
 
 
+def verify_source_signatures(
+    source_path: Path,
+    android: AndroidTools,
+    expected_fingerprints: tuple[str, ...],
+) -> str:
+    """Authenticate every input APK, including splits, before patching or caching."""
+    if not expected_fingerprints:
+        raise BundleError("No trusted publisher certificate fingerprints configured")
+    trusted = {value.replace(":", "").lower() for value in expected_fingerprints}
+
+    def verify(paths: list[Path]) -> str:
+        signers = {android.verify_signature(path) for path in paths}
+        if len(signers) != 1:
+            raise BundleError("Bundle contains inconsistent signing certificates")
+        fingerprint = signers.pop()
+        if fingerprint not in trusted:
+            raise BundleError(f"Untrusted publisher certificate: {fingerprint or 'unknown'}")
+        return fingerprint
+
+    if source_path.suffix.lower() in {".apkm", ".apks", ".xapk"}:
+        with tempfile.TemporaryDirectory(prefix="morphe-signatures-") as temp:
+            return verify(_extract_apks_for_inspection(source_path, Path(temp)))
+    return verify([source_path])
+
+
 def inspect_source(
     source_path: Path,
     android: AndroidTools,
