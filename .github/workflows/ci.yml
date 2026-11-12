@@ -5,11 +5,20 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      diagnose_stock:
+        description: "Inspect original stock APK signature output"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  diagnose-stock:
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnose_stock
+    uses: ./.github/workflows/diagnose-stock-signatures.yml
+
   lint:
     name: Lint & Typecheck
     runs-on: ubuntu-latest
